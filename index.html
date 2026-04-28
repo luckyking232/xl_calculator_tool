@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>角色属性计算器</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- 左侧配置栏 -->
+    <nav class="sidebar">
+      <button class="side-btn" data-modal="level">⚙️<br>等级</button>
+      <button class="side-btn" data-modal="passive">📘<br>被动</button>
+      <button class="side-btn" data-modal="awake">✨<br>觉醒</button>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main id="app">
+      <h1>⚔️ 角色属性计算器</h1>
+
+      <!-- 当前角色 -->
+      <div class="section char-display">
+        <div class="char-avatar">
+          <img id="charImg" src="" alt="角色头像" crossorigin="anonymous">
+        </div>
+        <div class="char-info">
+          <div class="char-name" id="charName">请选择角色</div>
+          <div class="char-detail" id="charDetail"></div>
+        </div>
+        <button id="changeCharBtn" class="btn-glass">更换角色</button>
+      </div>
+
+      <!-- 计算结果 -->
+      <div class="result-section" id="resultPanel">
+        <h2>📊 计算结果</h2>
+        <div class="attr-grid" id="attrGrid"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 等级配置浮窗 -->
+  <div id="modal-level" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3>⚙️ 等级配置</h3>
+      <div class="controls">
+        <div class="control-item">
+          <label>突破等级</label>
+          <select id="tierSelect">
+            <option value="0">突破0 (1~30级)</option>
+            <option value="1">突破1 (1~40级)</option>
+            <option value="2">突破2 (1~60级)</option>
+            <option value="3">突破3 (1~90级)</option>
+            <option value="4">突破4 (1~120级)</option>
+          </select>
+        </div>
+        <div class="control-item">
+          <label>角色等级</label>
+          <input type="number" id="levelInput" min="1" value="1">
+          <span id="levelRange" class="range-hint">当前等级范围：1 ~ 30</span>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button id="closeLevelBtn" class="btn-glass">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 被动配置浮窗 -->
+  <div id="modal-passive" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3>📘 被动技能</h3>
+      <div id="passiveContainer"></div>
+      <div class="modal-buttons">
+        <button id="closePassiveBtn" class="btn-glass">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 觉醒配置浮窗 -->
+  <div id="modal-awake" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3>✨ 觉醒技能</h3>
+      <div id="awakeCardsContainer" class="awake-cards"></div>
+      <div class="modal-buttons">
+        <button id="closeAwakeBtn" class="btn-glass">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 角色选择弹窗 -->
+  <div id="pickerModal" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content picker-modal">
+      <h3>选择角色</h3>
+      <div class="filter-bar">
+        <span class="filter-label">筛选：</span>
+        <div id="filterStars" class="filter-group"></div>
+        <div id="filterProfs" class="filter-group"></div>
+        <div id="filterElems" class="filter-group"></div>
+        <button id="clearFilterBtn" class="btn-glass btn-small">清除筛选</button>
+      </div>
+      <div id="charGrid" class="char-grid"></div>
+      <div class="modal-buttons">
+        <button id="confirmPickBtn" class="btn-glass">确定</button>
+        <button id="cancelPickBtn" class="btn-glass">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/app.js"></script>
+</body>
+</html>
