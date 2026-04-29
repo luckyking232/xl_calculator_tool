@@ -8,21 +8,19 @@
 </head>
 <body>
   <div class="layout">
-    <!-- 左侧配置栏 -->
     <nav class="sidebar">
       <button class="side-btn" data-modal="level">⚙️<br>等级</button>
       <button class="side-btn" data-modal="passive">📘<br>被动</button>
       <button class="side-btn" data-modal="awake">✨<br>觉醒</button>
+      <button class="side-btn" data-modal="badge">🎖️<br>徽章</button>
     </nav>
 
-    <!-- 主内容区 -->
     <main id="app">
       <h1>⚔️ 角色属性计算器</h1>
 
-      <!-- 当前角色 -->
       <div class="section char-display">
         <div class="char-avatar">
-          <img id="charImg" src="" alt="角色头像" crossorigin="anonymous">
+          <img id="charImg" src="" alt="角色头像">
         </div>
         <div class="char-info">
           <div class="char-name" id="charName">请选择角色</div>
@@ -31,9 +29,15 @@
         <button id="changeCharBtn" class="btn-glass">更换角色</button>
       </div>
 
-      <!-- 计算结果 -->
       <div class="result-section" id="resultPanel">
-        <h2>📊 计算结果</h2>
+        <div class="result-header">
+          <h2>📊 计算结果</h2>
+          <label class="toggle-switch">
+            <input type="checkbox" id="showSourceToggle">
+            <span class="slider"></span>
+            <span class="toggle-label">显示属性来源</span>
+          </label>
+        </div>
         <div class="attr-grid" id="attrGrid"></div>
       </div>
     </main>
@@ -58,7 +62,7 @@
         <div class="control-item">
           <label>角色等级</label>
           <input type="number" id="levelInput" min="1" value="1">
-          <span id="levelRange" class="range-hint">当前等级范围：1 ~ 30</span>
+          <span id="levelRange" class="range-hint">1 ~ 30</span>
         </div>
       </div>
       <div class="modal-buttons">
@@ -87,6 +91,22 @@
       <div id="awakeCardsContainer" class="awake-cards"></div>
       <div class="modal-buttons">
         <button id="closeAwakeBtn" class="btn-glass">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 徽章配置浮窗 -->
+  <div id="modal-badge" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content badge-modal">
+      <h3>🎖️ 徽章配置</h3>
+      <div class="badge-section">
+        <h4>套装选择</h4>
+        <div id="suitGrid" class="suit-grid"></div>
+      </div>
+      <div id="partsContainer" class="parts-area"></div>
+      <div class="modal-buttons">
+        <button id="closeBadgeBtn" class="btn-glass">关闭</button>
       </div>
     </div>
   </div>

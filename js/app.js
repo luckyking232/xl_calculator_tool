@@ -1,36 +1,36 @@
 document.addEventListener('DOMContentLoaded', () => {
   // ==================== DOM 元素 ====================
-  // 主界面
   const charImg = document.getElementById('charImg');
   const charName = document.getElementById('charName');
   const charDetail = document.getElementById('charDetail');
   const changeCharBtn = document.getElementById('changeCharBtn');
   const attrGrid = document.getElementById('attrGrid');
+  const showSourceToggle = document.getElementById('showSourceToggle');
 
-  // 等级浮窗
   const modalLevel = document.getElementById('modal-level');
   const tierSelect = document.getElementById('tierSelect');
   const levelInput = document.getElementById('levelInput');
   const levelRange = document.getElementById('levelRange');
   const closeLevelBtn = document.getElementById('closeLevelBtn');
 
-  // 被动浮窗
   const modalPassive = document.getElementById('modal-passive');
   const passiveContainer = document.getElementById('passiveContainer');
   const closePassiveBtn = document.getElementById('closePassiveBtn');
 
-  // 觉醒浮窗
   const modalAwake = document.getElementById('modal-awake');
   const awakeCardsContainer = document.getElementById('awakeCardsContainer');
   const closeAwakeBtn = document.getElementById('closeAwakeBtn');
 
-  // 角色选择弹窗
+  const modalBadge = document.getElementById('modal-badge');
+  const suitGrid = document.getElementById('suitGrid');
+  const partsContainer = document.getElementById('partsContainer');
+  const closeBadgeBtn = document.getElementById('closeBadgeBtn');
+
   const pickerModal = document.getElementById('pickerModal');
   const charGrid = document.getElementById('charGrid');
   const confirmPickBtn = document.getElementById('confirmPickBtn');
   const cancelPickBtn = document.getElementById('cancelPickBtn');
 
-  // 侧边按钮
   const sideBtns = document.querySelectorAll('.side-btn');
 
   // ==================== 数据变量 ====================
@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let levelUpData = {};
   let qualityUpData = {};
   let skillLevelUpData = {};
+  let badgeConfig = null;
   let currentCharId = null;
   let selectedCharId = null;
   let filterStars = new Set();
@@ -45,7 +46,21 @@ document.addEventListener('DOMContentLoaded', () => {
   let filterElems = new Set();
   let awakeActive = new Set();
 
-  // 属性映射
+  let selectedSuitId = null;
+  let flowerLevel = 0, orbLevel = 0, featherLevel = 0;
+  let flowerMain = '40005601', orbMain = '40005602', featherMain = '40005604';
+  let flowerSubs = ['40005701','40005702','40005703','40005704'];
+  let orbSubs = ['40005701','40005702','40005703','40005704'];
+  let featherSubs = ['40005701','40005702','40005703','40005704'];
+  let flowerSubTimes = [0,0,0,0], orbSubTimes = [0,0,0,0], featherSubTimes = [0,0,0,0];
+
+  let lastValidLevel = 1;
+  let lastValidFlowerLv = 0, lastValidOrbLv = 0, lastValidFeatherLv = 0;
+
+  let lastRawStats = {};
+  let lastBadgeAdd = {};
+  let lastBadgeMult = {};
+
   const ATTR_ID_MAP = {
     "40000102": { name: "生命", type: "int" },
     "40000103": { name: "攻击", type: "int" },
@@ -57,115 +72,143 @@ document.addEventListener('DOMContentLoaded', () => {
     "40000203": { name: "闪避率", type: "percent" },
     "40000301": { name: "移速", type: "int" },
     "40000302": { name: "攻速", type: "speed" },
-    "40000303": { name: "攻击距离", type: "int" }
+    "40000303": { name: "攻击距离", type: "int" },
+    "40000316": { name: "攻速", type: "percent" },
+    "40000501": { name: "治疗加成", type: "percent" }
   };
 
   function formatAttr(attrId, value) {
     const cfg = ATTR_ID_MAP[attrId];
     if (!cfg) return String(value);
-    if (cfg.type === "percent") return (value / 100).toFixed(2) + "%";
+    if (cfg.type === "percent") return (Math.abs(value) / 100).toFixed(2) + "%";
     if (cfg.type === "speed") return (value / 1000).toFixed(2) + " 秒";
     return String(Math.floor(value));
+  }
+
+  function formatDelta(attrId, delta) {
+    const cfg = ATTR_ID_MAP[attrId];
+    if (!cfg) return (delta >= 0 ? '+' : '') + delta;
+    if (cfg.type === "percent") {
+      return (delta >= 0 ? '+' : '') + (Math.abs(delta) / 100).toFixed(2) + "%";
+    } else if (cfg.type === "speed") {
+      return (delta >= 0 ? '+' : '') + (delta / 1000).toFixed(2) + " 秒";
+    } else {
+      return (delta >= 0 ? '+' : '') + Math.floor(delta);
+    }
   }
 
   // ==================== 数据加载 ====================
   async function loadData() {
     try {
-      const [charRes, levelRes, qualityRes, skillRes] = await Promise.all([
+      const [charRes, levelRes, qualityRes, skillRes, badgeRes] = await Promise.all([
         fetch('./data/characters_base.json'),
         fetch('./data/level_up.json'),
         fetch('./data/quality_up.json'),
-        fetch('./data/skill_level_up.json')
+        fetch('./data/skill_level_up.json'),
+        fetch('./data/badge_config.json')
       ]);
       characters = await charRes.json();
       levelUpData = await levelRes.json();
       qualityUpData = await qualityRes.json();
       skillLevelUpData = await skillRes.json();
+      badgeConfig = await badgeRes.json();
 
       characters.sort((a, b) => a.id - b.id);
       if (characters.length > 0) selectCharacter(characters[0].id);
       initFilterButtons();
-    } catch (err) {
-      console.error(err);
-      alert('数据加载失败');
-    }
+    } catch (err) { console.error(err); alert('数据加载失败'); }
   }
 
-  function getBurstHeadName(id) {
-    const burstId = id - 10000100 + 10000;
-    return `BurstHead_${burstId}_1.png`;
-  }
+  function getBurstHeadName(id) { return `BurstHead_${id - 10000100 + 10000}_1.png`; }
 
   // ==================== 浮窗控制 ====================
-  function openModal(modal) { modal.hidden = false; }
-  function closeModal(modal) { modal.hidden = true; }
-
+  function openModal(m) { m.hidden = false; }
+  function closeModal(m) { m.hidden = true; }
   sideBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      const modalId = btn.dataset.modal;
-      if (modalId === 'level') openModal(modalLevel);
-      else if (modalId === 'passive') openModal(modalPassive);
-      else if (modalId === 'awake') openModal(modalAwake);
+      const id = btn.dataset.modal;
+      if (id === 'level') openModal(modalLevel);
+      else if (id === 'passive') openModal(modalPassive);
+      else if (id === 'awake') openModal(modalAwake);
+      else if (id === 'badge') {
+        if (!badgeConfig) { alert('徽章数据未加载'); return; }
+        renderBadgeUI();
+        openModal(modalBadge);
+      }
     });
   });
+  [closeLevelBtn, closePassiveBtn, closeAwakeBtn, closeBadgeBtn].forEach(b => b.addEventListener('click', () => closeModal(b.closest('.modal'))));
+  document.querySelectorAll('.modal-backdrop').forEach(b => b.addEventListener('click', () => closeModal(b.parentElement)));
 
-  [closeLevelBtn, closePassiveBtn, closeAwakeBtn].forEach(btn => {
-    btn.addEventListener('click', () => closeModal(btn.closest('.modal')));
-  });
-
-  document.querySelectorAll('.modal-backdrop').forEach(bd => {
-    bd.addEventListener('click', () => closeModal(bd.parentElement));
-  });
+  // ==================== 输入保护 ====================
+  function setupNumberInput(input, min, getLast, setLast, onChange) {
+    input.addEventListener('input', () => {
+      const raw = input.value.trim();
+      if (raw === '') return;
+      let v = parseInt(raw);
+      if (isNaN(v)) return;
+      if (v < min) v = min;
+      if (input.max && v > parseInt(input.max)) v = parseInt(input.max);
+      input.value = v;
+      setLast(v);
+      onChange(v);
+    });
+    input.addEventListener('blur', () => {
+      if (input.value.trim() === '') {
+        const last = getLast();
+        input.value = last;
+        onChange(last);
+      }
+    });
+  }
 
   // ==================== 角色选择 ====================
   function selectCharacter(id) {
     currentCharId = id;
-    const char = characters.find(c => c.id == id);
-    if (!char) return;
-
-    charName.textContent = char.name;
-    charDetail.textContent = `${char.star}⭐ ${char.element} ${char.profession}`;
+    const ch = characters.find(c => c.id == id);
+    if (!ch) return;
+    charName.textContent = ch.name;
+    charDetail.textContent = `${ch.star}⭐ ${ch.element} ${ch.profession}`;
     charImg.src = `./assets/card/${getBurstHeadName(id)}`;
     charImg.onerror = () => { charImg.src = ''; };
-
     updateLevelRange();
-    renderPassiveSkills(char);
-    renderAwakeCards(char);
+    renderPassiveSkills(ch);
+    renderAwakeCards(ch);
     awakeActive.clear();
     updateAwakeUI();
+    lastValidLevel = 1;
+    levelInput.value = 1;
     calculate();
   }
 
   function updateLevelRange() {
     const tier = parseInt(tierSelect.value);
-    const maxLevels = [30, 40, 60, 90, 120];
+    const maxLevels = [30,40,60,90,120];
     const maxLv = maxLevels[tier];
-    levelRange.textContent = `当前等级范围：1 ~ ${maxLv}`;
+    levelRange.textContent = `1 ~ ${maxLv}`;
     levelInput.max = maxLv;
-    let lv = parseInt(levelInput.value);
-    if (isNaN(lv) || lv < 1) lv = 1;
-    if (lv > maxLv) lv = maxLv;
-    levelInput.value = lv;
+    let v = parseInt(levelInput.value) || lastValidLevel;
+    if (v < 1) v = 1; if (v > maxLv) v = maxLv;
+    levelInput.value = v;
+    lastValidLevel = v;
   }
 
   // ==================== 被动技能 ====================
-  function renderPassiveSkills(char) {
+  function renderPassiveSkills(ch) {
     passiveContainer.innerHTML = '';
-    if (!char.grow_skill_ids || char.grow_skill_ids.length === 0) {
+    if (!ch.grow_skill_ids || ch.grow_skill_ids.length === 0) {
       passiveContainer.innerHTML = '<p style="color:#aaa;">该角色无被动技能</p>';
       return;
     }
-    char.grow_skill_ids.forEach((skillId, idx) => {
-      const rawDesc = (char.passive_skill_descs && char.passive_skill_descs[idx]) ? char.passive_skill_descs[idx] : '';
+    ch.grow_skill_ids.forEach((skillId, idx) => {
+      const rawDesc = (ch.passive_skill_descs && ch.passive_skill_descs[idx]) ? ch.passive_skill_descs[idx] : '';
       const lines = rawDesc.split('\n').filter(l => l.trim() !== '');
       const skillName = lines.length > 0 ? lines[0] : `被动技能${idx+1}`;
       const descBody = lines.slice(1).join('\n');
-
       const row = document.createElement('div');
       row.className = 'passive-row';
       row.dataset.skillId = skillId;
-      row.innerHTML = `
-        <div class="skill-name">${skillName}</div>
+      row.innerHTML = `<div class="skill-name">${skillName}</div>
         <div class="passive-desc" data-raw="${descBody.replace(/"/g, '&quot;')}">${descBody}</div>
         <div class="skill-select">
           <label>等级：</label>
@@ -175,10 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <option value="2">2级</option>
             <option value="3">3级</option>
           </select>
-        </div>
-      `;
+        </div>`;
       passiveContainer.appendChild(row);
-
       const select = row.querySelector('.passive-level');
       select.addEventListener('change', () => {
         updatePassiveHighlight(row, parseInt(select.value));
@@ -197,14 +238,13 @@ document.addEventListener('DOMContentLoaded', () => {
       html = rawDesc.replace(new RegExp(`\\b${target}\\b`), `<span class="highlight-num">${target}</span>`);
     }
     descDiv.innerHTML = html;
-    if (level > 0) row.classList.add('active-skill');
-    else row.classList.remove('active-skill');
+    row.classList.toggle('active-skill', level > 0);
   }
 
   // ==================== 觉醒卡片 ====================
-  function renderAwakeCards(char) {
+  function renderAwakeCards(ch) {
     awakeCardsContainer.innerHTML = '';
-    const descs = char.awakening_skill_descs || [];
+    const descs = ch.awakening_skill_descs || [];
     if (descs.length === 0) {
       awakeCardsContainer.innerHTML = '<p style="color:#aaa;">该角色无觉醒技能</p>';
       return;
@@ -214,14 +254,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const lines = desc.split('\n').filter(l => l.trim() !== '');
       const title = lines.length > 0 ? lines[0] : `觉醒${awakeIndex}`;
       const body = lines.slice(1).join('\n');
-
       const card = document.createElement('div');
       card.className = 'awake-card';
       card.dataset.awakeIndex = awakeIndex;
-      card.innerHTML = `
-        <div class="awake-title">${title}</div>
-        <div class="awake-desc">${body}</div>
-      `;
+      card.innerHTML = `<div class="awake-title">${title}</div><div class="awake-desc">${body}</div>`;
       card.addEventListener('click', () => toggleAwake(awakeIndex));
       awakeCardsContainer.appendChild(card);
     });
@@ -239,145 +275,312 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateAwakeUI() {
-    const cards = awakeCardsContainer.querySelectorAll('.awake-card');
-    cards.forEach(card => {
-      const index = parseInt(card.dataset.awakeIndex);
-      card.classList.toggle('active', awakeActive.has(index));
+    document.querySelectorAll('.awake-card').forEach(card => {
+      const idx = parseInt(card.dataset.awakeIndex);
+      card.classList.toggle('active', awakeActive.has(idx));
     });
   }
 
-  // ==================== 核心计算（修正攻速） ====================
+  // ==================== 徽章 UI ====================
+  function renderBadgeUI() {
+    if (!badgeConfig) return;
+    renderSuitGrid();
+    renderPartsPanel();
+  }
+
+  function renderSuitGrid() {
+    suitGrid.innerHTML = '';
+    badgeConfig.suits.forEach(suit => {
+      const card = document.createElement('div');
+      card.className = 'suit-card' + (selectedSuitId === suit.id ? ' selected' : '');
+      card.innerHTML = `<div class="suit-name">${suit.name}</div><div class="suit-parts">${suit.parts}</div><div class="suit-effects">2件: ${suit.desc2}</div><div class="suit-effects">3件: ${suit.desc3}</div>`;
+      card.addEventListener('click', () => { selectedSuitId = suit.id; renderSuitGrid(); calculate(); });
+      suitGrid.appendChild(card);
+    });
+  }
+
+  function renderPartsPanel() {
+    partsContainer.innerHTML = '';
+    const flowerPanel = createPartPanel('花', flowerMain, badgeConfig.flower_main_options, flowerSubs, flowerSubTimes, flowerLevel,
+      (v) => { flowerLevel = v; updateMainSelectOptions(flowerPanel, v); calculate(); }, 'flower', lastValidFlowerLv, v => lastValidFlowerLv = v);
+    const orbPanel = createPartPanel('球', orbMain, badgeConfig.orb_main_options, orbSubs, orbSubTimes, orbLevel,
+      (v) => { orbLevel = v; updateMainSelectOptions(orbPanel, v); calculate(); }, 'orb', lastValidOrbLv, v => lastValidOrbLv = v);
+    const featherPanel = createPartPanel('羽', featherMain, badgeConfig.feather_main_options, featherSubs, featherSubTimes, featherLevel,
+      (v) => { featherLevel = v; updateMainSelectOptions(featherPanel, v); calculate(); }, 'feather', lastValidFeatherLv, v => lastValidFeatherLv = v);
+    partsContainer.append(flowerPanel, orbPanel, featherPanel);
+  }
+
+  function createPartPanel(name, mainValue, mainOptions, subValues, subTimes, currentLevel, onLevelChange, type, lastValid, setLastValid) {
+    const panel = document.createElement('div');
+    panel.className = 'part-panel';
+    panel.innerHTML = `<div class="part-title">${name}</div>`;
+
+    // 等级输入
+    const lvRow = document.createElement('div');
+    lvRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:8px;';
+    lvRow.innerHTML = '<label style="font-size:12px;">等级：</label>';
+    const lvInput = document.createElement('input');
+    lvInput.type = 'number'; lvInput.min = 0; lvInput.max = 12;
+    lvInput.value = currentLevel; lvInput.style.width = '60px';
+    setupNumberInput(lvInput, 0, () => lastValid, setLastValid, onLevelChange);
+    lvRow.appendChild(lvInput);
+    panel.appendChild(lvRow);
+
+    // 主属性选择
+    const mainGroup = document.createElement('div');
+    mainGroup.className = 'attr-select-group';
+    mainGroup.innerHTML = '<label>主属性</label>';
+    const mainSelect = document.createElement('select');
+mainOptions.forEach(optId => {
+  const opt = document.createElement('option');
+  opt.value = optId;
+  opt.textContent = getAttrDisplayName(optId, currentLevel, 0); // 主属性只有自身等级
+  mainSelect.appendChild(opt);
+});
+    mainSelect.value = mainValue;
+    mainSelect.addEventListener('change', () => {
+      if (type === 'flower') flowerMain = mainSelect.value;
+      else if (type === 'orb') orbMain = mainSelect.value;
+      else featherMain = mainSelect.value;
+      calculate();
+    });
+    mainGroup.appendChild(mainSelect);
+    panel.appendChild(mainGroup);
+    panel.mainSelect = mainSelect;  // 保存引用
+
+    // 副属性
+    const subGroup = document.createElement('div');
+    subGroup.className = 'attr-select-group';
+    subGroup.innerHTML = '<label>副属性</label>';
+    for (let i = 0; i < 4; i++) {
+      const row = document.createElement('div');
+      row.className = 'sub-upgrade-row';
+      const subSelect = document.createElement('select');
+badgeConfig.sub_options.forEach(optId => {
+  const opt = document.createElement('option');
+  opt.value = optId;
+  // 传入 0 级主等级 + 当前副属性升级次数
+  opt.textContent = getAttrDisplayName(optId, 0, subTimes[i]);
+  subSelect.appendChild(opt);
+});
+subSelect.value = subValues[i];
+      subSelect.addEventListener('change', () => {
+        const newVal = subSelect.value;
+        const arr = type === 'flower' ? flowerSubs : type === 'orb' ? orbSubs : featherSubs;
+        const others = arr.filter((_, idx) => idx !== i);
+        if (others.includes(newVal)) { subSelect.value = arr[i]; alert('该属性已存在'); return; }
+        arr[i] = newVal;
+        calculate();
+      });
+      row.appendChild(subSelect);
+
+      const minus = document.createElement('button'); minus.textContent = '-';
+      const plus = document.createElement('button'); plus.textContent = '+';
+      const span = document.createElement('span'); span.className = 'sub-times'; span.textContent = subTimes[i];
+      minus.addEventListener('click', () => changeSubTimes(type, i, -1, panel));
+      plus.addEventListener('click', () => changeSubTimes(type, i, 1, panel));
+      row.appendChild(minus); row.appendChild(span); row.appendChild(plus);
+      subGroup.appendChild(row);
+    }
+    panel.appendChild(subGroup);
+    return panel;
+  }
+
+function changeSubTimes(type, index, delta, panel) {
+  let arr = type === 'flower' ? flowerSubTimes : type === 'orb' ? orbSubTimes : featherSubTimes;
+  const total = arr.reduce((a, b) => a + b, 0);
+  if (delta > 0 && total >= (badgeConfig.max_sub_upgrades_per_part || 6)) return;
+  const n = arr[index] + delta;
+  if (n < 0) return;
+  arr[index] = n;
+  // 更新次数显示
+  const spans = panel.querySelectorAll('.sub-times');
+  if (spans[index]) spans[index].textContent = n;
+  // 更新该副属性选项的显示文本
+  const select = panel.querySelectorAll('.sub-upgrade-row select')[index];
+  if (select) {
+    const opt = select.options[select.selectedIndex];
+    const attrId = opt.value;
+    opt.textContent = getAttrDisplayName(attrId, 0, n);
+  }
+  calculate();
+}
+
+function updateMainSelectOptions(panel, level) {
+  const select = panel.mainSelect;
+  [...select.options].forEach(opt => {
+    opt.textContent = getAttrDisplayName(opt.value, level, 0);
+  });
+}
+
+function getAttrDisplayName(attrId, level, extraLevel = 0) {
+  const info = badgeConfig.main_attr_table?.[attrId] || badgeConfig.sub_attr_table?.[attrId];
+  if (!info) return attrId;
+  const parts = info.attr.split(':');
+  const baseVal = parseInt(parts[2]);
+  const totalAdd = info.add * (level + extraLevel);  // 合并等级与升级次数
+  let val = baseVal + totalAdd;
+  const attrName = ATTR_ID_MAP[parts[1]]?.name || parts[1];
+  const isPercent = parts[0] === '2' || parts[1] === '40000316' || parts[1] === '40000501' || ATTR_ID_MAP[parts[1]]?.type === 'percent';
+  const display = isPercent ? (Math.abs(val) / 100).toFixed(2) + '%' : Math.floor(val);
+  return `${attrName}（${display}）`;
+}
+
+  // ==================== 核心计算 ====================
   function calculate() {
-    if (!currentCharId) return;
-    const char = characters.find(c => c.id == currentCharId);
-    if (!char) return;
+    if (!currentCharId || !badgeConfig) return;
+    const ch = characters.find(c => c.id == currentCharId);
+    if (!ch) return;
 
     const tier = parseInt(tierSelect.value);
-    const level = parseInt(levelInput.value) || 1;
-    const preLevels = [0, 30, 70, 130, 220];
-    const totalLevel = preLevels[tier] + level;
+    const level = parseInt(levelInput.value) || lastValidLevel;
+    const pre = [0,30,70,130,220];
+    const totalLv = pre[tier] + level;
 
     // 基础属性
     const baseStats = {
-      "40000102": char.max_hp,
-      "40000103": char.atk,
-      "40000104": char.def,
-      "40000201": char.crt,
-      "40000202": char.blk,
-      "40000203": char.eva,
-      "40000204": char.crt_int,
-      "40000205": char.blk_int,
-      "40000301": char.spd_move,
-      "40000302": char.spd_atk,
-      "40000303": char.range_atk
+      "40000102": ch.max_hp, "40000103": ch.atk, "40000104": ch.def,
+      "40000201": ch.crt, "40000202": ch.blk, "40000203": ch.eva,
+      "40000204": ch.crt_int, "40000205": ch.blk_int,
+      "40000301": ch.spd_move, "40000302": ch.spd_atk, "40000303": ch.range_atk
     };
 
     // 等级成长
-    const levelKey = char.grow_model_id * 1000 + totalLevel;
-    const lvAdd = levelUpData[levelKey] || {};
-    for (let attrId in lvAdd) {
-      if (baseStats[attrId] !== undefined) baseStats[attrId] += lvAdd[attrId];
-      else baseStats[attrId] = lvAdd[attrId];
-    }
-
+    const lvAdd = levelUpData[ch.grow_model_id * 1000 + totalLv] || {};
+    for (let k in lvAdd) baseStats[k] = (baseStats[k]||0) + lvAdd[k];
     // 突破加成
-    const qualityKey = char.id * 1000 + tier;
-    const qAdd = qualityUpData[qualityKey] || {};
-    for (let attrId in qAdd) {
-      if (attrId === "max_total_level") continue;
-      if (baseStats[attrId] !== undefined) baseStats[attrId] += qAdd[attrId];
-      else baseStats[attrId] = qAdd[attrId];
-    }
+    const qAdd = qualityUpData[ch.id * 1000 + tier] || {};
+    for (let k in qAdd) if (k !== 'max_total_level') baseStats[k] = (baseStats[k]||0) + qAdd[k];
 
-    let addTotal = {};
-    let multTotal = {};
-
-    // 被动技能
+    // 技能
+    let skillAdd = {}, skillMult = {};
     document.querySelectorAll('.passive-level').forEach(sel => {
-      const skillId = parseInt(sel.closest('.passive-row').dataset.skillId);
+      const sid = parseInt(sel.closest('.passive-row').dataset.skillId);
       const lv = parseInt(sel.value);
-      if (lv > 0) applySkill(skillId, lv);
+      if (lv > 0) applySkill(sid, lv);
     });
-
-    // 觉醒技能
-    awakeActive.forEach(index => {
-      const skillId = char.unlock_skill_ids[index - 1];
-      if (skillId) applySkill(skillId, 1);
-    });
-
-    function applySkill(skillId, level) {
-      const skillLevelId = skillId * 1000 + level;
-      const effect = skillLevelUpData[skillLevelId];
-      if (!effect) return;
-      for (let [attrId, val] of Object.entries(effect.add || {})) {
-        addTotal[attrId] = (addTotal[attrId] || 0) + val;
-      }
-      for (let [attrId, val] of Object.entries(effect.mult || {})) {
-        multTotal[attrId] = (multTotal[attrId] || 0) + val;
-      }
+    awakeActive.forEach(idx => applySkill(ch.unlock_skill_ids[idx-1], 1));
+    function applySkill(sid, lv) {
+      const eff = skillLevelUpData[sid * 1000 + lv];
+      if (!eff) return;
+      for (let [k,v] of Object.entries(eff.add||{})) skillAdd[k] = (skillAdd[k]||0) + v;
+      for (let [k,v] of Object.entries(eff.mult||{})) skillMult[k] = (skillMult[k]||0) + v;
     }
 
-    // 最终属性计算
-    const result = {};
-    for (let attrId in baseStats) {
-      if (attrId === "40000302") continue; // 攻速单独处理
-      let val = baseStats[attrId] + (addTotal[attrId] || 0);
-      const mult = multTotal[attrId] || 0;
-      val = val * (1 + mult / 10000);
-      result[attrId] = Math.floor(val);
+    // 原始面板
+    const rawStats = {};
+    for (let k in baseStats) {
+      if (k === '40000302') continue;
+      let v = baseStats[k] + (skillAdd[k]||0);
+      v = v * (1 + (skillMult[k]||0)/10000);
+      rawStats[k] = Math.floor(v);
     }
-    // 处理只存在于加算中的新属性
-    for (let attrId in addTotal) {
-      if (!(attrId in result) && attrId !== "40000302" && attrId !== "40000316") {
-        let val = (addTotal[attrId] || 0);
-        const mult = multTotal[attrId] || 0;
-        val = val * (1 + mult / 10000);
-        result[attrId] = Math.floor(val);
+    // 包括可能新增的属性
+    for (let k in skillAdd) {
+      if (!(k in rawStats) && k !== '40000302' && k !== '40000316') {
+        let v = skillAdd[k];
+        v = v * (1 + (skillMult[k]||0)/10000);
+        rawStats[k] = Math.floor(v);
       }
     }
+    // 攻速原始
+    let rawSpd = baseStats['40000302'];
+    if (skillAdd['40000316']) rawSpd = rawSpd * (10000 + skillAdd['40000316']) / 10000;
+    rawSpd = rawSpd * (1 + (skillMult['40000302']||0)/10000) * (1 + (skillMult['40000316']||0)/10000);
+    rawStats['40000302'] = Math.floor(rawSpd);
 
-    // 特殊处理攻速
-    let baseSpdAtk = baseStats["40000302"] || 0;
-    let spdAtkAdd = addTotal["40000316"] || 0;  // 攻速变化值
-    let spdAtkMult = (multTotal["40000302"] || 0) + (multTotal["40000316"] || 0);
-    let finalSpdAtk = baseSpdAtk * (10000 + spdAtkAdd) / 10000;
-    finalSpdAtk = finalSpdAtk * (1 + spdAtkMult / 10000);
-    result["40000302"] = Math.floor(finalSpdAtk);
+    // 徽章加成
+    let badgeAdd = {}, badgeMult = {};
+    if (selectedSuitId) {
+      const suit = badgeConfig.suits.find(s => s.id === selectedSuitId);
+      if (suit?.add_attr) {
+        for (let op in suit.add_attr) for (let k in suit.add_attr[op]) {
+          if (op === '1') badgeAdd[k] = (badgeAdd[k]||0) + suit.add_attr[op][k];
+          else badgeMult[k] = (badgeMult[k]||0) + suit.add_attr[op][k];
+        }
+      }
+      // 主属性（等级≥0）
+      const addMain = (mainId, partLv) => {
+        if (partLv < 0) return; // 0级也加上基础值
+        const info = badgeConfig.main_attr_table[mainId];
+        if (!info) return;
+        const p = info.attr.split(':');
+        const total = parseInt(p[2]) + info.add * partLv; // partLv=0时就是基础值
+        if (p[0]==='1') badgeAdd[p[1]] = (badgeAdd[p[1]]||0) + total;
+        else badgeMult[p[1]] = (badgeMult[p[1]]||0) + total;
+      };
+      addMain(flowerMain, flowerLevel);
+      addMain(orbMain, orbLevel);
+      addMain(featherMain, featherLevel);
 
-    // 显示
-    const displayOrder = [
-      "40000102","40000103","40000104",
-      "40000201","40000204","40000202",
-      "40000205","40000203",
-      "40000301","40000302","40000303"
-    ];
+      // 副属性（0次升级也加基础值）
+      const addSubs = (subs, times) => {
+        subs.forEach((id, idx) => {
+          const info = badgeConfig.sub_attr_table[id];
+          if (!info) return;
+          const p = info.attr.split(':');
+          const total = parseInt(p[2]) + info.add * times[idx]; // times[idx]可以是0
+          if (p[0]==='1') badgeAdd[p[1]] = (badgeAdd[p[1]]||0) + total;
+          else badgeMult[p[1]] = (badgeMult[p[1]]||0) + total;
+        });
+      };
+      addSubs(flowerSubs, flowerSubTimes);
+      addSubs(orbSubs, orbSubTimes);
+      addSubs(featherSubs, featherSubTimes);
+    }
 
-    attrGrid.innerHTML = displayOrder.map(id => {
+    // 最终属性（不含攻速）
+    const finalStats = {};
+    for (let k in {...rawStats, ...badgeAdd, ...badgeMult}) {
+      if (k === '40000302' || k === '40000316') continue;
+      let v = rawStats[k] || 0;
+      v += (badgeAdd[k]||0);
+      v += (rawStats[k]||0) * ((badgeMult[k]||0)/10000);
+      finalStats[k] = Math.floor(v);
+    }
+    // 攻速最终
+    let finalSpd = rawStats['40000302'];
+    if (badgeAdd['40000316']) finalSpd = finalSpd * (10000 + badgeAdd['40000316']) / 10000;
+    finalSpd = finalSpd * (1 + (badgeMult['40000302']||0)/10000) * (1 + (badgeMult['40000316']||0)/10000);
+    finalStats['40000302'] = Math.floor(finalSpd);
+
+    lastRawStats = rawStats;
+    lastBadgeAdd = badgeAdd;
+    lastBadgeMult = badgeMult;
+    renderResult(finalStats);
+  }
+
+  function renderResult(finalStats) {
+    const showDetail = showSourceToggle && showSourceToggle.checked;
+    const order = ["40000102","40000103","40000104","40000201","40000204","40000202","40000205","40000203","40000301","40000302","40000303"];
+    attrGrid.innerHTML = order.map(id => {
       const name = ATTR_ID_MAP[id]?.name || id;
-      const value = result[id] !== undefined ? formatAttr(id, result[id]) : '-';
-      return `<div class="attr-item"><span class="attr-name">${name}</span><span>${value}</span></div>`;
+      const finalVal = finalStats[id] || 0;
+      let detailHtml = '';
+      if (showDetail && lastRawStats) {
+        const raw = lastRawStats[id] || 0;
+        const delta = (id === '40000302') ? finalVal - raw : finalVal - raw; // 一般属性一样
+        // 攻速的 delta 也要用速度格式
+        const deltaStr = delta !== 0 ? formatDelta(id, delta) : '';
+        detailHtml = `<span class="detail-raw">${formatAttr(id, raw)}</span>${deltaStr ? ' ' + deltaStr : ''}`;
+      }
+      return `<div class="attr-item">
+        <div class="attr-row"><span class="attr-name">${name}</span><span>${formatAttr(id, finalVal)}</span></div>
+        ${showDetail ? `<div class="detail-line visible">${detailHtml}</div>` : `<div class="detail-line"></div>`}
+      </div>`;
     }).join('');
   }
 
   // ==================== 角色弹窗与筛选 ====================
-  function openPicker() {
-    selectedCharId = currentCharId;
-    renderCharGrid();
-    pickerModal.hidden = false;
-  }
-  function closePicker() {
-    pickerModal.hidden = true;
-  }
-  function confirmPick() {
-    if (selectedCharId && selectedCharId !== currentCharId) selectCharacter(selectedCharId);
-    closePicker();
-  }
+  function openPicker() { selectedCharId = currentCharId; renderCharGrid(); pickerModal.hidden = false; }
+  function closePicker() { pickerModal.hidden = true; }
+  function confirmPick() { if (selectedCharId && selectedCharId !== currentCharId) selectCharacter(selectedCharId); closePicker(); }
 
   function getFilteredCharacters() {
     return characters.filter(c => {
-      if (filterStars.size > 0 && !filterStars.has(c.star)) return false;
-      if (filterProfs.size > 0 && !filterProfs.has(c.profession)) return false;
-      if (filterElems.size > 0 && !filterElems.has(c.element)) return false;
+      if (filterStars.size && !filterStars.has(c.star)) return false;
+      if (filterProfs.size && !filterProfs.has(c.profession)) return false;
+      if (filterElems.size && !filterElems.has(c.element)) return false;
       return true;
     });
   }
@@ -409,7 +612,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const starsGroup = document.getElementById('filterStars');
     const profsGroup = document.getElementById('filterProfs');
     const elemsGroup = document.getElementById('filterElems');
-
     for (let i = 1; i <= 5; i++) {
       const btn = document.createElement('button');
       btn.className = 'filter-btn';
@@ -431,24 +633,16 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => toggleFilter(filterElems, e, btn));
       elemsGroup.appendChild(btn);
     });
-
     document.getElementById('clearFilterBtn').addEventListener('click', () => {
-      filterStars.clear();
-      filterProfs.clear();
-      filterElems.clear();
+      filterStars.clear(); filterProfs.clear(); filterElems.clear();
       updateFilterUI();
       renderCharGrid();
     });
   }
 
   function toggleFilter(set, value, btn) {
-    if (set.has(value)) {
-      set.delete(value);
-      btn.classList.remove('active');
-    } else {
-      set.add(value);
-      btn.classList.add('active');
-    }
+    if (set.has(value)) { set.delete(value); btn.classList.remove('active'); }
+    else { set.add(value); btn.classList.add('active'); }
     renderCharGrid();
   }
 
@@ -465,19 +659,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ==================== 事件监听 ====================
+  // ==================== 事件绑定 ====================
   changeCharBtn.addEventListener('click', openPicker);
   tierSelect.addEventListener('change', () => { updateLevelRange(); calculate(); });
-  levelInput.addEventListener('input', () => {
-    let val = parseInt(levelInput.value);
-    const max = parseInt(levelInput.max);
-    if (isNaN(val) || val < 1) val = 1;
-    if (val > max) val = max;
-    levelInput.value = val;
-    calculate();
-  });
+  setupNumberInput(levelInput, 1, () => lastValidLevel, v => lastValidLevel = v, () => calculate());
   confirmPickBtn.addEventListener('click', confirmPick);
   cancelPickBtn.addEventListener('click', closePicker);
+  if (showSourceToggle) showSourceToggle.addEventListener('change', () => calculate());
 
   // 启动
   loadData();
