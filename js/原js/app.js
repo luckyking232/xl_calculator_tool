@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let lastRawStats = {};
   let lastBadgeAdd = {};
   let lastBadgeMult = {};
+  let lastDetailData = {};
 
   const ATTR_ID_MAP = {
     "40000102": { name: "生命", type: "int" },
@@ -83,18 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cfg.type === "percent") return (Math.abs(value) / 100).toFixed(2) + "%";
     if (cfg.type === "speed") return (value / 1000).toFixed(2) + " 秒";
     return String(Math.floor(value));
-  }
-
-  function formatDelta(attrId, delta) {
-    const cfg = ATTR_ID_MAP[attrId];
-    if (!cfg) return (delta >= 0 ? '+' : '') + delta;
-    if (cfg.type === "percent") {
-      return (delta >= 0 ? '+' : '') + (Math.abs(delta) / 100).toFixed(2) + "%";
-    } else if (cfg.type === "speed") {
-      return (delta >= 0 ? '+' : '') + (delta / 1000).toFixed(2) + " 秒";
-    } else {
-      return (delta >= 0 ? '+' : '') + Math.floor(delta);
-    }
   }
 
   // ==================== 数据加载 ====================
@@ -437,7 +426,6 @@ function getAttrDisplayName(attrId, level, extraLevel = 0) {
     const pre = [0,30,70,130,220];
     const totalLv = pre[tier] + level;
 
-    // 基础属性
     const baseStats = {
       "40000102": ch.max_hp, "40000103": ch.atk, "40000104": ch.def,
       "40000201": ch.crt, "40000202": ch.blk, "40000203": ch.eva,
@@ -445,14 +433,11 @@ function getAttrDisplayName(attrId, level, extraLevel = 0) {
       "40000301": ch.spd_move, "40000302": ch.spd_atk, "40000303": ch.range_atk
     };
 
-    // 等级成长
     const lvAdd = levelUpData[ch.grow_model_id * 1000 + totalLv] || {};
     for (let k in lvAdd) baseStats[k] = (baseStats[k]||0) + lvAdd[k];
-    // 突破加成
     const qAdd = qualityUpData[ch.id * 1000 + tier] || {};
     for (let k in qAdd) if (k !== 'max_total_level') baseStats[k] = (baseStats[k]||0) + qAdd[k];
 
-    // 技能
     let skillAdd = {}, skillMult = {};
     document.querySelectorAll('.passive-level').forEach(sel => {
       const sid = parseInt(sel.closest('.passive-row').dataset.skillId);
@@ -467,27 +452,33 @@ function getAttrDisplayName(attrId, level, extraLevel = 0) {
       for (let [k,v] of Object.entries(eff.mult||{})) skillMult[k] = (skillMult[k]||0) + v;
     }
 
-    // 原始面板
+    // 原始面板（向上取整，攻速除外）
     const rawStats = {};
     for (let k in baseStats) {
       if (k === '40000302') continue;
       let v = baseStats[k] + (skillAdd[k]||0);
-      v = v * (1 + (skillMult[k]||0)/10000);
-      rawStats[k] = Math.floor(v);
+      const mult = (skillMult[k] || 0);
+      v = v * (1 + mult / 10000);
+      rawStats[k] = Math.ceil(v);
     }
-    // 包括可能新增的属性
     for (let k in skillAdd) {
       if (!(k in rawStats) && k !== '40000302' && k !== '40000316') {
         let v = skillAdd[k];
         v = v * (1 + (skillMult[k]||0)/10000);
-        rawStats[k] = Math.floor(v);
+        rawStats[k] = Math.ceil(v);
       }
     }
-    // 攻速原始
+
+    // 原始攻速
     let rawSpd = baseStats['40000302'];
-    if (skillAdd['40000316']) rawSpd = rawSpd * (10000 + skillAdd['40000316']) / 10000;
-    rawSpd = rawSpd * (1 + (skillMult['40000302']||0)/10000) * (1 + (skillMult['40000316']||0)/10000);
-    rawStats['40000302'] = Math.floor(rawSpd);
+    if (skillAdd['40000316']) {
+      rawSpd = rawSpd * (10000 + skillAdd['40000316']) / 10000;
+    }
+    const spdMultTotal = (skillMult['40000302'] || 0) + (skillMult['40000316'] || 0);
+    if (spdMultTotal) {
+      rawSpd = rawSpd / (1 + spdMultTotal / 10000);
+    }
+    rawStats['40000302'] = rawSpd;
 
     // 徽章加成
     let badgeAdd = {}, badgeMult = {};
@@ -499,27 +490,24 @@ function getAttrDisplayName(attrId, level, extraLevel = 0) {
           else badgeMult[k] = (badgeMult[k]||0) + suit.add_attr[op][k];
         }
       }
-      // 主属性（等级≥0）
       const addMain = (mainId, partLv) => {
-        if (partLv < 0) return; // 0级也加上基础值
+        if (partLv < 0) return;
         const info = badgeConfig.main_attr_table[mainId];
         if (!info) return;
         const p = info.attr.split(':');
-        const total = parseInt(p[2]) + info.add * partLv; // partLv=0时就是基础值
+        const total = parseInt(p[2]) + info.add * partLv;
         if (p[0]==='1') badgeAdd[p[1]] = (badgeAdd[p[1]]||0) + total;
         else badgeMult[p[1]] = (badgeMult[p[1]]||0) + total;
       };
       addMain(flowerMain, flowerLevel);
       addMain(orbMain, orbLevel);
       addMain(featherMain, featherLevel);
-
-      // 副属性（0次升级也加基础值）
       const addSubs = (subs, times) => {
         subs.forEach((id, idx) => {
           const info = badgeConfig.sub_attr_table[id];
           if (!info) return;
           const p = info.attr.split(':');
-          const total = parseInt(p[2]) + info.add * times[idx]; // times[idx]可以是0
+          const total = parseInt(p[2]) + info.add * times[idx];
           if (p[0]==='1') badgeAdd[p[1]] = (badgeAdd[p[1]]||0) + total;
           else badgeMult[p[1]] = (badgeMult[p[1]]||0) + total;
         });
@@ -529,43 +517,80 @@ function getAttrDisplayName(attrId, level, extraLevel = 0) {
       addSubs(featherSubs, featherSubTimes);
     }
 
-    // 最终属性（不含攻速）
     const finalStats = {};
+    const detail = {};
+
     for (let k in {...rawStats, ...badgeAdd, ...badgeMult}) {
       if (k === '40000302' || k === '40000316') continue;
-      let v = rawStats[k] || 0;
-      v += (badgeAdd[k]||0);
-      v += (rawStats[k]||0) * ((badgeMult[k]||0)/10000);
-      finalStats[k] = Math.floor(v);
+      const raw = rawStats[k] || 0;
+      const add = Math.ceil(badgeAdd[k] || 0);
+      const mult = badgeMult[k] || 0;
+      const multVal = Math.ceil(raw * mult / 10000);
+      const badgeTotal = add + multVal;
+      finalStats[k] = raw + add + multVal;
+      detail[k] = { raw, badgeAdd: add, badgeMultVal: multVal, badgeTotal };
     }
-    // 攻速最终
-    let finalSpd = rawStats['40000302'];
-    if (badgeAdd['40000316']) finalSpd = finalSpd * (10000 + badgeAdd['40000316']) / 10000;
-    finalSpd = finalSpd * (1 + (badgeMult['40000302']||0)/10000) * (1 + (badgeMult['40000316']||0)/10000);
-    finalStats['40000302'] = Math.floor(finalSpd);
 
-    lastRawStats = rawStats;
-    lastBadgeAdd = badgeAdd;
-    lastBadgeMult = badgeMult;
+    // 最终攻速
+    let finalSpd = rawStats['40000302'];
+    if (badgeAdd['40000316']) {
+      finalSpd = finalSpd * (10000 + badgeAdd['40000316']) / 10000;
+    }
+    const badgeSpdMult = (badgeMult['40000302'] || 0) + (badgeMult['40000316'] || 0);
+    if (badgeSpdMult) {
+      finalSpd = finalSpd / (1 + badgeSpdMult / 10000);
+    }
+    finalStats['40000302'] = Math.floor(finalSpd * 100) / 100;
+
+    // 攻速明细：原始大数（整数），徽章影响值 = 最终大数整数 - 原始大数整数
+    const rawSpdInt = Math.floor(rawSpd);
+    const finalSpdInt = Math.floor(finalSpd);
+    detail['40000302'] = {
+      raw: rawSpdInt,
+      badgeTotal: finalSpdInt - rawSpdInt
+    };
+
+    lastDetailData = detail;
     renderResult(finalStats);
   }
 
+  // ==================== 渲染结果 ====================
   function renderResult(finalStats) {
     const showDetail = showSourceToggle && showSourceToggle.checked;
-    const order = ["40000102","40000103","40000104","40000201","40000204","40000202","40000205","40000203","40000301","40000302","40000303"];
+    const order = [
+      "40000102","40000103","40000104",
+      "40000201","40000204","40000202",
+      "40000205","40000203",
+      "40000301","40000302","40000303"
+    ];
     attrGrid.innerHTML = order.map(id => {
       const name = ATTR_ID_MAP[id]?.name || id;
-      const finalVal = finalStats[id] || 0;
+      const finalVal = finalStats[id] ?? 0;
+
       let detailHtml = '';
-      if (showDetail && lastRawStats) {
-        const raw = lastRawStats[id] || 0;
-        const delta = (id === '40000302') ? finalVal - raw : finalVal - raw; // 一般属性一样
-        // 攻速的 delta 也要用速度格式
-        const deltaStr = delta !== 0 ? formatDelta(id, delta) : '';
-        detailHtml = `<span class="detail-raw">${formatAttr(id, raw)}</span>${deltaStr ? ' ' + deltaStr : ''}`;
+      if (showDetail && lastDetailData[id]) {
+        const d = lastDetailData[id];
+        if (id === '40000302') {
+          // 攻速明细：原始大数 徽章差值
+          detailHtml = `<span class="detail-raw">${d.raw}</span>`;
+          if (d.badgeTotal !== 0) {
+            detailHtml += ` <span class="detail-badge-add">${d.badgeTotal >= 0 ? '+' : ''}${d.badgeTotal}</span>`;
+          }
+        } else {
+          const rawStr = formatAttr(id, d.raw);
+          const badgeStr = formatAttr(id, d.badgeTotal);
+          detailHtml = `<span class="detail-raw">${rawStr}</span>`;
+          if (d.badgeTotal !== 0) {
+            detailHtml += ` <span class="detail-badge-add">${d.badgeTotal >= 0 ? '+' : ''}${badgeStr}</span>`;
+          }
+        }
       }
+
+      // 最终值统一使用 formatAttr 显示
+      const finalDisplay = formatAttr(id, finalVal);
+
       return `<div class="attr-item">
-        <div class="attr-row"><span class="attr-name">${name}</span><span>${formatAttr(id, finalVal)}</span></div>
+        <div class="attr-row"><span class="attr-name">${name}</span><span>${finalDisplay}</span></div>
         ${showDetail ? `<div class="detail-line visible">${detailHtml}</div>` : `<div class="detail-line"></div>`}
       </div>`;
     }).join('');
