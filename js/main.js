@@ -1,7 +1,10 @@
 // main.js
 import { loadAllData } from './dataLoader.js';
 import { calculate, ATTR_ID_MAP } from './calculator.js';
-import * as ui from './ui.js';
+import { openModal, closeModal, setupNumberInput, renderResult } from './uiUtils.js';
+import { renderCharGrid, initFilterButtons } from './charUI.js';
+import { renderPassiveSkills, updatePassiveHighlight, renderAwakeCards, toggleAwake } from './skillUI.js';
+import { renderBadgeUI } from './badgeUI.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   // ==================== DOM 元素 ====================
@@ -117,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     lastFinalStats = finalStats;
     lastDetail = detail;
-    ui.renderResult(attrGrid, finalStats, detail, showSourceToggle.checked, ATTR_ID_MAP);
+    renderResult(attrGrid, finalStats, detail, showSourceToggle.checked, ATTR_ID_MAP);
   }
 
   // ==================== 角色选择 ====================
@@ -135,10 +138,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     levelInput.value = 1;
     updateLevelRange();
 
-    ui.renderPassiveSkills(passiveContainer, ch, runCalculate);
+    renderPassiveSkills(passiveContainer, ch, runCalculate);
     awakeActive.clear();
-    ui.renderAwakeCards(awakeCardsContainer, ch, awakeActive, (idx) => {
-      ui.toggleAwake(idx, awakeActive, awakeCardsContainer, runCalculate);
+    renderAwakeCards(awakeCardsContainer, ch, awakeActive, (idx) => {
+      toggleAwake(idx, awakeActive, awakeCardsContainer, runCalculate);
     });
 
     runCalculate();
@@ -160,14 +163,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ==================== 徽章 UI 更新 ====================
   function updateBadgeUI() {
     if (!badgeConfig) return;
-    ui.renderBadgeUI(badgeConfig, suitGrid, partsContainer, badgeState, runCalculate);
+    renderBadgeUI(badgeConfig, suitGrid, partsContainer, badgeState, runCalculate);
   }
 
   // ==================== 弹窗与事件绑定 ====================
-  function openModal(m) { ui.openModal(m); }
-  function closeModal(m) { ui.closeModal(m); }
-
-  // 侧边栏按钮
   sideBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       const modalId = btn.dataset.modal;
@@ -181,7 +180,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  // 关闭按钮与背景点击
   [closeLevelBtn, closePassiveBtn, closeAwakeBtn, closeBadgeBtn].forEach(btn => {
     btn.addEventListener('click', () => closeModal(btn.closest('.modal')));
   });
@@ -189,10 +187,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     bd.addEventListener('click', () => closeModal(bd.parentElement));
   });
 
-  // 更换角色
   changeCharBtn.addEventListener('click', () => {
     selectedCharId = currentCharId;
-    ui.renderCharGrid(charGrid, getFilteredCharacters(), selectedCharId, (id) => {
+    renderCharGrid(charGrid, getFilteredCharacters(), selectedCharId, (id) => {
       selectCharacter(id);
       closeModal(pickerModal);
     });
@@ -205,25 +202,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   cancelPickBtn.addEventListener('click', () => closeModal(pickerModal));
 
-  // 等级输入
-  ui.setupNumberInput(levelInput, 1, () => lastValidLevel, v => lastValidLevel = v, () => runCalculate());
+  setupNumberInput(levelInput, 1, () => lastValidLevel, v => lastValidLevel = v, () => runCalculate());
   tierSelect.addEventListener('change', () => {
     updateLevelRange();
     runCalculate();
   });
 
-  // 属性来源开关
   if (showSourceToggle) {
     showSourceToggle.addEventListener('change', () => {
-      ui.renderResult(attrGrid, lastFinalStats, lastDetail, showSourceToggle.checked, ATTR_ID_MAP);
+      renderResult(attrGrid, lastFinalStats, lastDetail, showSourceToggle.checked, ATTR_ID_MAP);
     });
   }
 
   // ==================== 筛选按钮 ====================
   const filterState = { stars: filterStars, profs: filterProfs, elems: filterElems };
-  ui.initFilterButtons(starsGroup, profsGroup, elemsGroup, clearFilterBtn, filterState, () => {
+  initFilterButtons(starsGroup, profsGroup, elemsGroup, clearFilterBtn, filterState, () => {
     if (!pickerModal.hidden) {
-      ui.renderCharGrid(charGrid, getFilteredCharacters(), selectedCharId, (id) => {
+      renderCharGrid(charGrid, getFilteredCharacters(), selectedCharId, (id) => {
         selectCharacter(id);
         closeModal(pickerModal);
       });

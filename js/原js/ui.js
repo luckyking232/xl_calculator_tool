@@ -1,6 +1,49 @@
 // ui.js
 import { ATTR_ID_MAP, formatAttr } from './calculator.js';
 
+// 被动技能图标映射
+const passiveIcons = {
+    '战斗精通': 'Grow_1_SkillIcon_fui_atlas0.png.png',
+    '防护强化': 'Grow_2_SkillIcon_fui_atlas0_1.png.png',
+    '体能突破': 'Grow_3_SkillIcon_fui_atlas0_1.png.png',
+    '战斗诀窍': 'Grow_4_SkillIcon_fui_atlas0.png.png',
+    '极致锋芒': 'Grow_5_SkillIcon_fui_atlas0.png.png',
+    '坚毅斗志': 'Grow_6_SkillIcon_fui_atlas0.png.png',
+    '冲击术': 'Grow_10_SkillIcon_fui_atlas0.png.png'
+};
+
+// 觉醒图标映射
+const awakeningIcons = {
+    '同调': 'Passive_3003_SkillStarIcon_fui_atlas0.png.png',
+    '启示': 'Passive_3002_SkillStarIcon_fui_atlas0.png.png',
+    '升变': 'Passive_3001_SkillStarIcon_fui_atlas0.png.png',
+    '斗志激昂': 'Passive_4003_SkillStarIcon_fui_atlas0.png.png',
+    '不朽之辉': 'Passive_4003_SkillStarIcon_fui_atlas0.png.png',
+    '狂风意志': 'Passive_4001_SkillStarIcon_fui_atlas0.png.png',
+    '征服之光': 'Passive_4001_SkillStarIcon_fui_atlas0.png.png',
+    '生存本能': 'Passive_4002_SkillStarIcon_fui_atlas0.png.png',
+    '无畏之志': 'Passive_4002_SkillStarIcon_fui_atlas0.png.png',
+    '潜能激发': 'Passive_2001_SkillStarIcon_fui_atlas0.png.png',
+    '本源共鸣': 'Passive_5001_SkillStarIcon_fui_atlas0.png.png'
+};
+
+// ==================== 图标辅助函数 ====================
+function getSuitIconPath(suitId) {
+  return `./assets/badge/${suitId}_ItemIcon_fui_atlas0.png.png`;
+}
+
+function getPartIconPath(suitId, partType) {
+  if (!suitId) return '';
+  // 套装序号 = suitId - 40008000 - 1，转为两位数字（第一套序号00）
+  const seq = (suitId - 40008000 - 1).toString().padStart(2, '0');
+  let partNum;
+  if (partType === 'flower') partNum = 1;
+  else if (partType === 'orb') partNum = 2;
+  else if (partType === 'feather') partNum = 3;
+  else return '';
+  return `./assets/badge/2108${seq}1${partNum}_ItemIcon_fui_atlas1.png.png`;
+}
+
 // ==================== 模态框 ====================
 export function openModal(modal) { modal.hidden = false; }
 export function closeModal(modal) { modal.hidden = true; }
@@ -39,26 +82,62 @@ export function renderPassiveSkills(container, char, onPassiveChange) {
     const lines = rawDesc.split('\n').filter(l => l.trim() !== '');
     const skillName = lines.length > 0 ? lines[0] : `被动技能${idx+1}`;
     const descBody = lines.slice(1).join('\n');
+
     const row = document.createElement('div');
     row.className = 'passive-row';
     row.dataset.skillId = skillId;
-    row.innerHTML = `<div class="skill-name">${skillName}</div>
-      <div class="passive-desc" data-raw="${descBody.replace(/"/g, '&quot;')}">${descBody}</div>
-      <div class="skill-select">
-        <label>等级：</label>
-        <select class="passive-level">
-          <option value="0">0级</option>
-          <option value="1">1级</option>
-          <option value="2">2级</option>
-          <option value="3">3级</option>
-        </select>
-      </div>`;
-    container.appendChild(row);
-    const select = row.querySelector('.passive-level');
+    row.style.cssText = 'overflow:auto; padding:8px;';
+
+    // 图标（浮动左侧）
+    const iconFile = passiveIcons[skillName];
+    if (iconFile) {
+      const img = document.createElement('img');
+      img.src = './assets/grow&passive/' + iconFile;
+      img.alt = skillName;
+      img.style.cssText = 'float:left; width:36px; height:36px; object-fit:contain; margin-right:8px; margin-bottom:4px;';
+      row.appendChild(img);
+    }
+
+    // 技能名（与图标同行）
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'skill-name';
+    nameDiv.textContent = skillName;
+    nameDiv.style.cssText = 'font-weight:bold; margin-bottom:4px;';
+    row.appendChild(nameDiv);
+
+    // 描述（清除浮动，另起一行）
+    const descDiv = document.createElement('div');
+    descDiv.className = 'passive-desc';
+    descDiv.setAttribute('data-raw', descBody.replace(/"/g, '&quot;'));
+    descDiv.textContent = descBody;
+    descDiv.style.cssText = 'clear:left; font-size:13px; line-height:1.6; margin-bottom:8px; color:#ccc;';
+    row.appendChild(descDiv);
+
+    // 等级选择（紧凑排列）
+    const skillSelectDiv = document.createElement('div');
+    skillSelectDiv.className = 'skill-select';
+    skillSelectDiv.style.cssText = 'display:flex; align-items:center; gap:6px;';
+    const label = document.createElement('label');
+    label.textContent = '等级：';
+    label.style.cssText = 'font-size:13px; color:#aaa;';
+    skillSelectDiv.appendChild(label);
+    const select = document.createElement('select');
+    select.className = 'passive-level';
+    select.style.cssText = 'width:55px; padding:2px 4px; font-size:13px;';
+    select.innerHTML = `
+      <option value="0">0级</option>
+      <option value="1">1级</option>
+      <option value="2">2级</option>
+      <option value="3">3级</option>
+    `;
     select.addEventListener('change', () => {
       updatePassiveHighlight(row, parseInt(select.value));
       onPassiveChange();
     });
+    skillSelectDiv.appendChild(select);
+    row.appendChild(skillSelectDiv);
+
+    container.appendChild(row);
   });
 }
 
@@ -88,10 +167,36 @@ export function renderAwakeCards(container, char, awakeActive, onToggleAwake) {
     const lines = desc.split('\n').filter(l => l.trim() !== '');
     const title = lines.length > 0 ? lines[0] : `觉醒${awakeIndex}`;
     const body = lines.slice(1).join('\n');
+
     const card = document.createElement('div');
     card.className = 'awake-card';
     card.dataset.awakeIndex = awakeIndex;
-    card.innerHTML = `<div class="awake-title">${title}</div><div class="awake-desc">${body}</div>`;
+    card.style.cssText = 'overflow:auto; padding:8px;';
+
+    // 图标
+    const iconFile = awakeningIcons[title];
+    if (iconFile) {
+      const img = document.createElement('img');
+      img.src = './assets/grow&passive/' + iconFile;
+      img.alt = title;
+      img.style.cssText = 'float:left; width:36px; height:36px; object-fit:contain; margin-right:8px; margin-bottom:4px;';
+      card.appendChild(img);
+    }
+
+    // 觉醒标题
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'awake-title';
+    titleDiv.textContent = title;
+    titleDiv.style.cssText = 'font-weight:bold; margin-bottom:4px;';
+    card.appendChild(titleDiv);
+
+    // 描述
+    const descDiv = document.createElement('div');
+    descDiv.className = 'awake-desc';
+    descDiv.textContent = body;
+    descDiv.style.cssText = 'clear:left; font-size:13px; color:#ccc; white-space:pre-line;';
+    card.appendChild(descDiv);
+
     card.addEventListener('click', () => onToggleAwake(awakeIndex));
     container.appendChild(card);
   });
@@ -119,11 +224,11 @@ function updateAwakeUI(container, awakeActive) {
 export function renderBadgeUI(badgeConfig, suitGrid, partsContainer, badgeState, onChange) {
   renderSuitGrid(suitGrid, badgeConfig.suits, badgeState.selectedSuitId, (newId) => {
     badgeState.selectedSuitId = newId;
-    // 手动更新套装卡片高亮（避免重绘丢失焦点）
     Array.from(suitGrid.children).forEach(card => {
       const suitId = parseInt(card.dataset.suitId);
       card.classList.toggle('selected', suitId === newId);
     });
+    renderPartsPanel(partsContainer, badgeConfig, badgeState, onChange);
     onChange();
   });
   renderPartsPanel(partsContainer, badgeConfig, badgeState, onChange);
@@ -134,12 +239,15 @@ function renderSuitGrid(container, suits, selectedSuitId, onSelect) {
   suits.forEach(suit => {
     const card = document.createElement('div');
     card.className = 'suit-card' + (selectedSuitId === suit.id ? ' selected' : '');
-    card.dataset.suitId = suit.id;   // 用于后续高亮更新
+    card.dataset.suitId = suit.id;
+    card.style.cssText = 'overflow:auto; padding:8px;';
     card.innerHTML = `
-      <div class="suit-name">${suit.name}</div>
-      <div class="suit-parts">${suit.parts}</div>
-      <div class="suit-effects">2件: ${suit.desc2}</div>
-      <div class="suit-effects">3件: ${suit.desc3}</div>
+      <img src="${getSuitIconPath(suit.id)}" alt="${suit.name}" 
+           style="float:left; width:48px; height:48px; object-fit:contain; margin-right:12px; margin-bottom:4px;">
+      <div style="font-size:16px; font-weight:bold; color:#fff; margin-bottom:4px;">${suit.name}</div>
+      <div style="clear:left; font-size:12px; color:#aaa; margin-bottom:2px;">${suit.parts}</div>
+      <div style="font-size:12px; color:#ccc;">2件: ${suit.desc2}</div>
+      <div style="font-size:12px; color:#ccc;">3件: ${suit.desc3}</div>
     `;
     card.addEventListener('click', () => onSelect(suit.id));
     container.appendChild(card);
@@ -148,35 +256,68 @@ function renderSuitGrid(container, suits, selectedSuitId, onSelect) {
 
 function renderPartsPanel(container, badgeConfig, state, onChange) {
   container.innerHTML = '';
+  const suitId = state.selectedSuitId;
+  if (!suitId) {
+    container.innerHTML = '<p style="color:#aaa;">请先选择套装</p>';
+    return;
+  }
   const flowerPanel = createPartPanel('花', state.flowerMain, badgeConfig.flower_main_options, state.flowerSubs, state.flowerSubTimes, state.flowerLevel,
-    (v) => { state.flowerLevel = v; onChange(); }, 'flower', state.lastValidFlowerLv, v => state.lastValidFlowerLv = v, badgeConfig, state, onChange);
+    (v) => { state.flowerLevel = v; onChange(); }, 'flower', state.lastValidFlowerLv, v => state.lastValidFlowerLv = v, badgeConfig, state, onChange, suitId);
   const orbPanel = createPartPanel('球', state.orbMain, badgeConfig.orb_main_options, state.orbSubs, state.orbSubTimes, state.orbLevel,
-    (v) => { state.orbLevel = v; onChange(); }, 'orb', state.lastValidOrbLv, v => state.lastValidOrbLv = v, badgeConfig, state, onChange);
+    (v) => { state.orbLevel = v; onChange(); }, 'orb', state.lastValidOrbLv, v => state.lastValidOrbLv = v, badgeConfig, state, onChange, suitId);
   const featherPanel = createPartPanel('羽', state.featherMain, badgeConfig.feather_main_options, state.featherSubs, state.featherSubTimes, state.featherLevel,
-    (v) => { state.featherLevel = v; onChange(); }, 'feather', state.lastValidFeatherLv, v => state.lastValidFeatherLv = v, badgeConfig, state, onChange);
+    (v) => { state.featherLevel = v; onChange(); }, 'feather', state.lastValidFeatherLv, v => state.lastValidFeatherLv = v, badgeConfig, state, onChange, suitId);
   container.append(flowerPanel, orbPanel, featherPanel);
 }
 
-function createPartPanel(name, mainValue, mainOptions, subValues, subTimes, currentLevel, onLevelChange, type, lastValid, setLastValid, badgeConfig, state, globalOnChange) {
+function createPartPanel(name, mainValue, mainOptions, subValues, subTimes, currentLevel, onLevelChange, type, lastValid, setLastValid, badgeConfig, state, globalOnChange, suitId) {
   const panel = document.createElement('div');
   panel.className = 'part-panel';
-  panel.innerHTML = `<div class="part-title">${name}</div>`;
 
-  // 等级输入
-  const lvRow = document.createElement('div');
-  lvRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:8px;';
-  lvRow.innerHTML = '<label style="font-size:12px;">等级：</label>';
+  // ---------- 标题行（图标+名称 左对齐，等级 右对齐） ----------
+  const titleRow = document.createElement('div');
+  titleRow.style.cssText = 'display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;';
+  
+  // 左侧：图标 + 名称
+  const leftPart = document.createElement('div');
+  leftPart.style.cssText = 'display:flex; align-items:center; gap:6px;';
+  const iconPath = getPartIconPath(suitId, type);
+  if (iconPath) {
+    const img = document.createElement('img');
+    img.src = iconPath;
+    img.alt = name;
+    img.style.cssText = 'width:30px; height:30px; object-fit:contain;';
+    leftPart.appendChild(img);
+  }
+  const titleText = document.createElement('div');
+  titleText.className = 'part-title';
+  titleText.textContent = name;
+  leftPart.appendChild(titleText);
+  titleRow.appendChild(leftPart);
+
+  // 右侧：等级输入
+  const rightPart = document.createElement('div');
+  rightPart.style.cssText = 'display:flex; align-items:center; gap:6px;';
+  const label = document.createElement('label');
+  label.style.cssText = 'font-size:12px; color:#ccc;';
+  label.textContent = '等级：';
+  rightPart.appendChild(label);
   const lvInput = document.createElement('input');
-  lvInput.type = 'number'; lvInput.min = 0; lvInput.max = 12;
-  lvInput.value = currentLevel; lvInput.style.width = '60px';
+  lvInput.type = 'number';
+  lvInput.min = 0;
+  lvInput.max = 12;
+  lvInput.value = currentLevel;
+  lvInput.style.width = '60px';
   setupNumberInput(lvInput, 0, () => lastValid, setLastValid, (v) => {
     onLevelChange(v);
     updateMainSelectOptions(panel, v, badgeConfig);
   });
-  lvRow.appendChild(lvInput);
-  panel.appendChild(lvRow);
+  rightPart.appendChild(lvInput);
+  titleRow.appendChild(rightPart);
+  
+  panel.appendChild(titleRow);
 
-  // 主属性选择
+  // ---------- 主属性选择 ----------
   const mainGroup = document.createElement('div');
   mainGroup.className = 'attr-select-group';
   mainGroup.innerHTML = '<label>主属性</label>';
@@ -198,7 +339,7 @@ function createPartPanel(name, mainValue, mainOptions, subValues, subTimes, curr
   panel.appendChild(mainGroup);
   panel.mainSelect = mainSelect;
 
-  // 副属性
+  // ---------- 副属性（保持不变） ----------
   const subGroup = document.createElement('div');
   subGroup.className = 'attr-select-group';
   subGroup.innerHTML = '<label>副属性</label>';
