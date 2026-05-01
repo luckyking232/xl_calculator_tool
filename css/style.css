@@ -142,6 +142,13 @@ input:checked + .slider::before {
   transform: translateX(20px);
 }
 
+/* 滑块文字标签 */
+.toggle-label {
+  font-size: 13px;
+  color: #ccc;
+  user-select: none;
+}
+
 .attr-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -173,6 +180,17 @@ input:checked + .slider::before {
 .detail-raw { color: #ff9999; }
 .detail-badge-add { color: #99ff99; }
 .detail-seal-add { color: #99ccff; }
+.detail-deed-add { color: #ffaa00; }
+
+/* 图例 */
+.detail-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 12px;
+}
+.detail-legend span { font-size: 12px; }
 
 /* 模态浮窗通用 */
 .modal {
@@ -337,27 +355,10 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   overflow: hidden;
 }
 
-/* 自动生成的关闭按钮（右上角） */
-.seal-close-btn {
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  z-index: 1;
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  color: #ccc;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.seal-close-btn:hover {
-  background: rgba(255,255,255,0.25);
+/* 刻印关闭按钮（现在在 modal-content 底部，与其他弹窗一致） */
+.seal-close-bottom {
+  align-self: flex-end;
+  margin-top: auto;
 }
 
 /* 左侧职业栏 */
@@ -393,29 +394,30 @@ select option { background: #2a2a3a; color: #e0e0e0; }
 .seal-main {
   flex: 1;
   display: flex;
-  align-items: center;       /* 垂直居中 */
+  align-items: center;
   justify-content: center;
   gap: 20px;
   padding: 0 10px;
+  transition: opacity 0.15s ease;
 }
 
-/* 刻印内容纵向排列容器 */
+/* 整体纵向排列容器 */
 .seal-circles {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;   /* 内部内容垂直居中 */
+  justify-content: center;
   gap: 30px;
 }
 
-/* 大圆横向布局 */
+/* 大圆：强制横向排列 */
 .seal-circle.seal-circle-large-row {
   flex-direction: row;
   align-items: center;
   gap: 20px;
 }
 
-/* 右侧列（段位 + 等级） */
+/* 右侧列（段位标志 + 等级） */
 .seal-right-col {
   display: flex;
   flex-direction: column;
@@ -431,12 +433,17 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   gap: 40px;
 }
 
-/* 通用圆样式 */
+/* 通用圆样式（基类） */
 .seal-circle {
   display: flex;
   flex-direction: column;
   align-items: center;
   cursor: pointer;
+}
+
+/* 小圆专用 */
+.seal-circle-small {
+  /* 继承 column 布局 */
 }
 
 /* 图标容器 */
@@ -476,7 +483,7 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   object-fit: contain;
 }
 
-/* 段位文字（宋体，居中，金属描边基色由JS设置） */
+/* 段位文字 */
 .seal-rank-text {
   position: absolute;
   top: 50%;
@@ -497,7 +504,7 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   margin-top: 2px;
 }
 
-/* 右侧最终总加成面板 */
+/* 右侧总加成面板 */
 .seal-total-panel {
   width: 130px;
   background: rgba(0,0,0,0.3);
@@ -507,10 +514,8 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-self: center;          /* 居中，不拉伸 */
-  height: auto;                /* 高度由内容决定 */
+  align-self: center;
 }
-
 .seal-total-title {
   font-size: 18px;
   font-weight: bold;
@@ -518,7 +523,6 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   margin-bottom: 16px;
   text-align: center;
 }
-
 .seal-total-item {
   display: flex;
   justify-content: space-between;
@@ -526,17 +530,15 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   font-size: 14px;
   margin: 6px 0;
 }
-
 .seal-total-item .attr-label {
   color: #ccc;
 }
-
 .seal-total-item .attr-value {
   color: #ffd966;
   font-weight: bold;
 }
 
-/* 右侧编辑面板（滑出更快） */
+/* 右侧编辑面板 */
 .seal-edit-panel {
   position: absolute;
   right: -230px;
@@ -596,19 +598,94 @@ select option { background: #2a2a3a; color: #e0e0e0; }
 .seal-level-card .level-num { font-weight: bold; }
 .seal-level-card .attr-bonus { font-size: 14px; }
 
-/* 属性来源刻印加成颜色 */
-.detail-seal-add { color: #99ccff; }
-
 /* 移动端适配 */
 @media (max-width: 600px) {
   .layout { flex-direction: column; }
-  .sidebar { flex-direction: row; width: 100%; height: auto; justify-content: center; position: static; }
-  .side-btn { width: auto; height: auto; padding: 8px 12px; font-size: 14px; }
+
+  /* 顶部侧边栏：两行，每行三个按钮，均匀分布 */
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+    height: auto;
+    padding: 10px 5px;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .side-btn {
+    width: auto;
+    height: auto;
+    padding: 10px 0;
+    font-size: 12px;
+    aspect-ratio: auto;
+    border-radius: 10px;
+  }
+
   .parts-area { grid-template-columns: 1fr; }
+
+  /* 刻印弹窗：纵向布局，允许滚动 */
+  .seal-modal {
+    max-width: 100%;
+  }
+  .seal-layout {
+    flex-direction: column;
+    height: auto;                /* 去除固定高度，由内容撑开 */
+    min-height: 50vh;
+    overflow-y: visible;         /* 滚动交给外层 modal-content */
+  }
+
+  /* 职业栏移到顶部，横向排列 */
+  .seal-prof-sidebar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    justify-content: center;
+    padding: 8px 5px;
+    gap: 10px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .seal-prof-btn {
+    width: 45px;
+    height: 45px;
+  }
+
+  /* 主区域纵向排列，总加成面板自然位于圆圈下方 */
+  .seal-main {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 10px;
+    width: 100%;
+  }
+
+  /* 总加成面板宽度自适应，不再需要避开右侧关闭按钮（关闭按钮已移到 modal-content 底部） */
+  .seal-total-panel {
+    width: 90%;
+    max-width: 300px;
+    align-self: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+
+  .seal-circles {
+    gap: 20px;
+  }
 
   .seal-small-row { gap: 20px; }
   .seal-circle-img-wrap { width: 60px; height: 60px; }
   .seal-circle-large-row .seal-circle-img-wrap { width: 80px; height: 80px; }
   .seal-rank-wrap { width: 60px; height: 60px; }
-  .seal-total-panel { width: 90px; padding: 6px; }
+
+  .seal-edit-panel {
+    width: 200px;
+    right: -200px;
+  }
+
+  /* 关闭按钮位置微调（它已经在 modal-content 内部，自然位于底部） */
+  .seal-close-bottom {
+    margin-top: 12px;
+  }
 }

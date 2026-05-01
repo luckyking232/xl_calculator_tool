@@ -57,7 +57,7 @@ export function renderResult(attrGrid, finalStats, detail, showDetail, ATTR_ID_M
     if (showDetail && detail[id]) {
       const d = detail[id];
       if (id === '40000302') {
-        // 攻速属性：仅显示原始值和徽章加成，不显示刻印
+        // 攻速：只显示原始值和徽章影响，不显示刻印/事迹
         detailHtml = `<span class="detail-raw">${d.raw}</span>`;
         if (d.badgeTotal !== 0) {
           detailHtml += ` <span class="detail-badge-add">${d.badgeTotal >= 0 ? '+' : ''}${d.badgeTotal}</span>`;
@@ -66,12 +66,16 @@ export function renderResult(attrGrid, finalStats, detail, showDetail, ATTR_ID_M
         const rawStr = formatAttr(id, d.raw);
         const badgeStr = formatAttr(id, d.badgeTotal);
         const sealStr = formatAttr(id, d.sealAdd);
+        const deedStr = formatAttr(id, d.deedAdd);
         detailHtml = `<span class="detail-raw">${rawStr}</span>`;
         if (d.badgeTotal !== 0) {
           detailHtml += ` <span class="detail-badge-add">${d.badgeTotal >= 0 ? '+' : ''}${badgeStr}</span>`;
         }
         if (d.sealAdd !== 0) {
           detailHtml += ` <span class="detail-seal-add">${d.sealAdd >= 0 ? '+' : ''}${sealStr}</span>`;
+        }
+        if (d.deedAdd !== 0) {
+          detailHtml += ` <span class="detail-deed-add">${d.deedAdd >= 0 ? '+' : ''}${deedStr}</span>`;
         }
       }
     }

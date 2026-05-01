@@ -13,8 +13,8 @@
       <button class="side-btn" data-modal="passive">📘<br>被动</button>
       <button class="side-btn" data-modal="awake">✨<br>觉醒</button>
       <button class="side-btn" data-modal="badge">🎖️<br>徽章</button>
-      <!-- 👇 新增刻印按钮 -->
       <button class="side-btn" data-modal="seal">🔮<br>刻印</button>
+      <button class="side-btn" data-modal="deed">📜<br>事迹</button>
     </nav>
 
     <main id="app">
@@ -41,6 +41,12 @@
           </label>
         </div>
         <div class="attr-grid" id="attrGrid"></div>
+        <div id="legend" class="detail-legend" style="display:none;">
+          <span class="detail-raw">■ 基础</span>
+          <span class="detail-badge-add">■ 徽章</span>
+          <span class="detail-seal-add">■ 刻印</span>
+          <span class="detail-deed-add">■ 事迹</span>
+        </div>
       </div>
     </main>
   </div>
@@ -113,7 +119,7 @@
     </div>
   </div>
 
-  <!-- 👇 新增刻印配置浮窗 -->
+  <!-- 刻印配置浮窗 -->
   <div id="modal-seal" class="modal" hidden>
     <div class="modal-backdrop"></div>
     <div class="modal-content seal-modal">
@@ -140,6 +146,24 @@
           </div>
           <div class="seal-edit-body" id="sealEditBody"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 事迹星级 -->
+  <div id="modal-deed" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3>📜 事迹星级</h3>
+      <div class="controls">
+        <div class="control-item">
+          <label>星级数（0 ~ 999）</label>
+          <input type="number" id="deedStarInput" min="0" max="999" value="0">
+        </div>
+      </div>
+      <div id="deedPreview" style="margin-top:12px; font-size:14px; color:#ccc;">攻击 +0　防御 +0　生命 +0</div>
+      <div class="modal-buttons">
+        <button id="closeDeedBtn" class="btn-glass">关闭</button>
       </div>
     </div>
   </div>

@@ -72,13 +72,18 @@ export function initSealUI(container, editPanel, onStateChange, sealData) {
   const profSidebar = document.getElementById('sealProfSidebar');
   const layout = mainArea.parentNode;
 
-  if (!layout.querySelector('.seal-close-btn')) {
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'seal-close-btn';
-    closeBtn.innerHTML = '×';
-    closeBtn.addEventListener('click', () => layout.closest('.modal').hidden = true);
-    layout.appendChild(closeBtn);
-  }
+// 替换为右下角“关闭”按钮（与其他弹窗风格统一）
+// 将关闭按钮加到 modal-content 底部，避免与刻印内容重叠
+const modalContent = layout.closest('.modal-content');
+if (modalContent && !modalContent.querySelector('.seal-close-bottom')) {
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn-glass seal-close-bottom';
+  closeBtn.textContent = '关闭';
+  closeBtn.addEventListener('click', () => {
+    modalContent.closest('.modal').hidden = true;
+  });
+  modalContent.appendChild(closeBtn);
+}
 
   profSidebar.querySelectorAll('.seal-prof-btn').forEach(btn => {
     btn.addEventListener('click', () => {

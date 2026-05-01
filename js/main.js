@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const changeCharBtn = document.getElementById('changeCharBtn');
   const attrGrid = document.getElementById('attrGrid');
   const showSourceToggle = document.getElementById('showSourceToggle');
+  const legendDiv = document.getElementById('legend');
 
   const modalLevel = document.getElementById('modal-level');
   const tierSelect = document.getElementById('tierSelect');
@@ -40,6 +41,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const sealMain = document.getElementById('sealMain');
   const sealEditPanel = document.getElementById('sealEditPanel');
 
+  // 事迹相关 DOM
+  const modalDeed = document.getElementById('modal-deed');
+  const deedStarInput = document.getElementById('deedStarInput');
+  const deedPreview = document.getElementById('deedPreview');
+  const closeDeedBtn = document.getElementById('closeDeedBtn');
+
   const pickerModal = document.getElementById('pickerModal');
   const charGrid = document.getElementById('charGrid');
   const confirmPickBtn = document.getElementById('confirmPickBtn');
@@ -57,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let qualityUpData = {};
   let skillLevelUpData = {};
   let badgeConfig = null;
-  let sealData = null;              // 新增：刻印数据
+  let sealData = null;
 
   let currentCharId = null;
   let selectedCharId = null;
@@ -82,8 +89,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let lastFinalStats = {};
   let lastDetail = {};
 
-  // 刻印初始化标志
-  let sealInited = false;
+  let deedStars = 0;                // 事迹星级
 
   // ==================== 辅助函数 ====================
   function getBurstHeadName(id) {
@@ -99,45 +105,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-// ==================== 核心计算 ====================
-function runCalculate() {
-  if (!currentCharId || !badgeConfig) return;
-  const ch = characters.find(c => c.id === currentCharId);
-  if (!ch) return;
+  // 事迹加成计算（5星一循环）
+  function getDeedAdd(stars) {
+    const full = Math.floor(stars / 5);
+    const rem = stars % 5;
+    const atk = full * 2 + (rem >= 1 ? 2 : 0);
+    const def = full * 1 + (rem >= 2 ? 1 : 0);
+    const hp  = full * 24 + (rem >= 3 ? (rem - 2) * 8 : 0);
+    return { atk, def, hp };
+  }
 
-  const tier = parseInt(tierSelect.value);
-  const level = parseInt(levelInput.value) || lastValidLevel;
+  // ==================== 核心计算 ====================
+  function runCalculate() {
+    if (!currentCharId || !badgeConfig) return;
+    const ch = characters.find(c => c.id === currentCharId);
+    if (!ch) return;
 
-  const passiveLevels = {};
-  document.querySelectorAll('.passive-level').forEach(sel => {
-    const skillId = parseInt(sel.closest('.passive-row').dataset.skillId);
-    const lv = parseInt(sel.value);
-    if (lv > 0) passiveLevels[skillId] = lv;
-  });
+    const tier = parseInt(tierSelect.value);
+    const level = parseInt(levelInput.value) || lastValidLevel;
 
-  // 获取刻印加成（只计算当前角色职业的刻印）
-  const sealAdd = (sealMain && sealMain.getTotalSealAdd)
-    ? sealMain.getTotalSealAdd(ch.profession)
-    : { atk: 0, def: 0, hp: 0 };
+    const passiveLevels = {};
+    document.querySelectorAll('.passive-level').forEach(sel => {
+      const skillId = parseInt(sel.closest('.passive-row').dataset.skillId);
+      const lv = parseInt(sel.value);
+      if (lv > 0) passiveLevels[skillId] = lv;
+    });
 
-  const state = {
-    char: ch,
-    tier,
-    level,
-    passiveLevels,
-    awakeActive,
-    badgeState,
-    sealAdd               // 刻印加成
-  };
+    // 刻印加成（只计算当前角色职业）
+    const sealAdd = (sealMain && sealMain.getTotalSealAdd)
+      ? sealMain.getTotalSealAdd(ch.profession)
+      : { atk: 0, def: 0, hp: 0 };
 
-  const { finalStats, detail } = calculate(state, {
-    levelUpData, qualityUpData, skillLevelUpData, badgeConfig
-  });
+    // 事迹加成
+    const deedAdd = getDeedAdd(deedStars);
 
-  lastFinalStats = finalStats;
-  lastDetail = detail;
-  renderResult(attrGrid, finalStats, detail, showSourceToggle.checked, ATTR_ID_MAP);
-}
+    const state = {
+      char: ch,
+      tier,
+      level,
+      passiveLevels,
+      awakeActive,
+      badgeState,
+      sealAdd,
+      deedAdd
+    };
+
+    const { finalStats, detail } = calculate(state, {
+      levelUpData, qualityUpData, skillLevelUpData, badgeConfig
+    });
+
+    lastFinalStats = finalStats;
+    lastDetail = detail;
+    renderResult(attrGrid, finalStats, detail, showSourceToggle.checked, ATTR_ID_MAP);
+  }
 
   // ==================== 角色选择 ====================
   function selectCharacter(id) {
@@ -146,7 +166,7 @@ function runCalculate() {
     if (!ch) return;
 
     charName.textContent = ch.name;
-    charDetail.textContent = `${ch.star}⭐ ${ch.element} ${ch.profession}`;
+    charDetail.innerHTML = `${ch.star}⭐<br>${ch.element} ${ch.profession}`;
     charImg.src = `./assets/card/${getBurstHeadName(id)}`;
     charImg.onerror = () => { charImg.src = ''; };
 
@@ -194,13 +214,14 @@ function runCalculate() {
         openModal(modalBadge);
       } else if (modalId === 'seal') {
         openModal(modalSeal);
-        // 延后到数据加载完成后才初始化（见下方启动流程）
+      } else if (modalId === 'deed') {
+        openModal(modalDeed);
       }
     });
   });
 
   // 关闭按钮与背景点击
-  [closeLevelBtn, closePassiveBtn, closeAwakeBtn, closeBadgeBtn].forEach(btn => {
+  [closeLevelBtn, closePassiveBtn, closeAwakeBtn, closeBadgeBtn, closeDeedBtn].forEach(btn => {
     btn.addEventListener('click', () => closeModal(btn.closest('.modal')));
   });
   document.querySelectorAll('.modal-backdrop').forEach(bd => {
@@ -230,9 +251,18 @@ function runCalculate() {
     runCalculate();
   });
 
-  // 属性来源开关
+  // 事迹星级输入
+  setupNumberInput(deedStarInput, 0, () => deedStars, v => deedStars = v, (v) => {
+    deedStars = v;
+    const add = getDeedAdd(v);
+    deedPreview.innerHTML = `攻击 +${add.atk}　防御 +${add.def}　生命 +${add.hp}`;
+    runCalculate();
+  });
+
+  // 属性来源开关（同时控制图例）
   if (showSourceToggle) {
     showSourceToggle.addEventListener('change', () => {
+      legendDiv.style.display = showSourceToggle.checked ? 'flex' : 'none';
       renderResult(attrGrid, lastFinalStats, lastDetail, showSourceToggle.checked, ATTR_ID_MAP);
     });
   }
@@ -256,11 +286,11 @@ function runCalculate() {
     qualityUpData = data.qualityUpData;
     skillLevelUpData = data.skillLevelUpData;
     badgeConfig = data.badgeConfig;
-    sealData = data.sealData;                // 保存刻印数据
+    sealData = data.sealData;
 
     characters.sort((a, b) => a.id - b.id);
 
-    // 初始化刻印 UI（只需一次，传入数据和计算回调）
+    // 初始化刻印 UI
     if (sealData) {
       initSealUI(sealMain, sealEditPanel, runCalculate, sealData);
     }
