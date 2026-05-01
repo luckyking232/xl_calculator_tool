@@ -5,6 +5,7 @@ import { openModal, closeModal, setupNumberInput, renderResult } from './uiUtils
 import { renderCharGrid, initFilterButtons } from './charUI.js';
 import { renderPassiveSkills, updatePassiveHighlight, renderAwakeCards, toggleAwake } from './skillUI.js';
 import { renderBadgeUI } from './badgeUI.js';
+import { initSealUI } from './sealUI.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   // ==================== DOM 元素 ====================
@@ -33,6 +34,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const suitGrid = document.getElementById('suitGrid');
   const partsContainer = document.getElementById('partsContainer');
   const closeBadgeBtn = document.getElementById('closeBadgeBtn');
+
+  // 刻印弹窗元素
+  const modalSeal = document.getElementById('modal-seal');
+  const sealMain = document.getElementById('sealMain');
+  const sealEditPanel = document.getElementById('sealEditPanel');
+  // const closeSealBtn = document.getElementById('closeSealBtn');
 
   const pickerModal = document.getElementById('pickerModal');
   const charGrid = document.getElementById('charGrid');
@@ -74,6 +81,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   let lastValidLevel = 1;
   let lastFinalStats = {};
   let lastDetail = {};
+
+  // 刻印初始化标志
+  let sealInited = false;
 
   // ==================== 辅助函数 ====================
   function getBurstHeadName(id) {
@@ -176,10 +186,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       else if (modalId === 'badge') {
         updateBadgeUI();
         openModal(modalBadge);
+      } else if (modalId === 'seal') {
+        openModal(modalSeal);
+        if (!sealInited) {
+          initSealUI(sealMain, sealEditPanel, () => {});
+          sealInited = true;
+        }
       }
     });
   });
 
+  // 关闭按钮与背景点击（包含新增加的刻印关闭按钮）
   [closeLevelBtn, closePassiveBtn, closeAwakeBtn, closeBadgeBtn].forEach(btn => {
     btn.addEventListener('click', () => closeModal(btn.closest('.modal')));
   });
@@ -187,6 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bd.addEventListener('click', () => closeModal(bd.parentElement));
   });
 
+  // 更换角色
   changeCharBtn.addEventListener('click', () => {
     selectedCharId = currentCharId;
     renderCharGrid(charGrid, getFilteredCharacters(), selectedCharId, (id) => {
@@ -202,12 +220,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   cancelPickBtn.addEventListener('click', () => closeModal(pickerModal));
 
+  // 等级输入
   setupNumberInput(levelInput, 1, () => lastValidLevel, v => lastValidLevel = v, () => runCalculate());
   tierSelect.addEventListener('change', () => {
     updateLevelRange();
     runCalculate();
   });
 
+  // 属性来源开关
   if (showSourceToggle) {
     showSourceToggle.addEventListener('change', () => {
       renderResult(attrGrid, lastFinalStats, lastDetail, showSourceToggle.checked, ATTR_ID_MAP);

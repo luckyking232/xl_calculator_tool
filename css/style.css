@@ -99,7 +99,49 @@ h1 { text-align: center; margin-bottom: 20px; font-size: 1.8rem; }
   border-radius: 12px;
   padding: 16px;
 }
-.result-section h2 { margin-bottom: 12px; font-size: 1.2rem; }
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.result-header h2 { margin: 0; font-size: 1.2rem; }
+
+/* 滑动开关 */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #ccc;
+}
+.toggle-switch input { display: none; }
+.slider {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 20px;
+  transition: 0.3s;
+}
+.slider::before {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px; top: 2px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+input:checked + .slider {
+  background: #4a9eff;
+}
+input:checked + .slider::before {
+  transform: translateX(20px);
+}
+
 .attr-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -107,13 +149,29 @@ h1 { text-align: center; margin-bottom: 20px; font-size: 1.8rem; }
 }
 .attr-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 2px;
   background: rgba(0,0,0,0.3);
   padding: 8px 12px;
   border-radius: 6px;
   font-size: 14px;
 }
-.attr-item .attr-name { font-weight: bold; }
+.attr-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.attr-name { font-weight: bold; }
+.detail-line {
+  font-size: 0.75em;
+  color: #aaa;
+  margin-top: 2px;
+  padding-left: 8px;
+  display: none;
+}
+.detail-line.visible { display: block; }
+.detail-raw { color: #ff9999; }
+.detail-badge-add { color: #99ff99; }
 
 /* 模态浮窗通用 */
 .modal {
@@ -143,7 +201,7 @@ h1 { text-align: center; margin-bottom: 20px; font-size: 1.8rem; }
 .badge-modal { max-width: 700px; }
 .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 
-/* 徽章 - 套装网格 */
+/* 徽章 - 套装网格 （保持原有grid布局） */
 .badge-section { margin-bottom: 16px; }
 .suit-grid {
   display: grid;
@@ -159,12 +217,10 @@ h1 { text-align: center; margin-bottom: 20px; font-size: 1.8rem; }
   padding: 8px;
   cursor: pointer;
   transition: all 0.2s;
+  overflow: auto;
 }
 .suit-card:hover { background: rgba(255,255,255,0.1); }
 .suit-card.selected { border-color: #4a9eff; background: rgba(74,158,255,0.15); }
-.suit-card .suit-name { font-size: 14px; font-weight: bold; }
-.suit-card .suit-parts { font-size: 12px; color: #aaa; }
-.suit-card .suit-effects { font-size: 12px; color: #ccc; margin-top: 4px; }
 
 /* 徽章部位配置 */
 .parts-area {
@@ -196,11 +252,7 @@ h1 { text-align: center; margin-bottom: 20px; font-size: 1.8rem; }
   gap: 6px;
   margin-bottom: 6px;
 }
-.sub-upgrade-row span {
-  flex: 1;
-  font-size: 12px;
-  color: #ccc;
-}
+.sub-upgrade-row span { flex: 1; font-size: 12px; color: #ccc; }
 .sub-upgrade-row button {
   width: 24px; height: 24px;
   background: rgba(255,255,255,0.15);
@@ -213,7 +265,7 @@ h1 { text-align: center; margin-bottom: 20px; font-size: 1.8rem; }
 .sub-upgrade-row button:disabled { opacity: 0.4; cursor: default; }
 .sub-times { font-size: 12px; min-width: 24px; text-align: center; }
 
-/* 其他已有样式保持不变：controls, passive, awake 等 */
+/* 等级、被动、觉醒等通用控件 */
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .control-item { display: flex; flex-direction: column; }
 .control-item label { margin-bottom: 4px; font-size: 13px; color: #ccc; }
@@ -272,77 +324,222 @@ select option { background: #2a2a3a; color: #e0e0e0; }
 .char-card img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
 .char-card .card-name { font-size: 11px; color: #ccc; margin-top: 4px; text-align: center; word-break: keep-all; }
 
-@media (max-width: 600px) {
-  .layout { flex-direction: column; }
-  .sidebar { flex-direction: row; width: 100%; height: auto; justify-content: center; position: static; }
-  .side-btn { width: auto; height: auto; padding: 8px 12px; font-size: 14px; }
-  .parts-area { grid-template-columns: 1fr; }
+/* ==================== 刻印系统样式 ==================== */
+/* ==================== 刻印系统样式 ==================== */
+.seal-modal {
+  max-width: 850px;
 }
 
-/* 保留原有全部样式，在末尾追加以下内容 */
-.result-header {
+.seal-layout {
+  display: flex;
+  height: 60vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 自动生成的关闭按钮（右上角，会被编辑面板遮住） */
+.seal-close-btn {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 1;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  color: #ccc;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.seal-close-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+/* 左侧职业栏 */
+.seal-prof-sidebar {
+  width: 70px;
+  height: 100%;
+  background: rgba(20,20,30,0.8);
+  border-right: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 12px;
+}
+
+.seal-prof-btn {
+  width: 50px;
+  height: 50px;
+  background: rgba(255,255,255,0.08);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+}
+.seal-prof-btn img { width:100%; height:100%; object-fit:contain; }
+.seal-prof-btn.active { border-color: #4a9eff; background: rgba(74,158,255,0.2); }
+
+/* 中间主区域 */
+.seal-main {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease;    /* 职业切换淡入淡出 */
+}
+
+/* 整体纵向排列容器 */
+.seal-circles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  padding: 20px 0;
+}
+
+/* 大圆：强制横向排列，覆盖 .seal-circle 的 column 方向 */
+.seal-circle.seal-circle-large-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+}
+
+/* 右侧列（段位标志 + 等级） */
+.seal-right-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 小圆行（攻击/生命/防御横向排列） */
+.seal-small-row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 40px;
+}
+
+/* 通用圆样式（基类） */
+.seal-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* 小圆专用（保留默认纵向排列，无需额外样式） */
+.seal-circle-small {
+  /* 继承 .seal-circle 的 column 布局 */
+}
+
+/* 图标容器 */
+.seal-circle-img-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.seal-circle-large-row .seal-circle-img-wrap {
+  width: 100px;
+  height: 100px;
+}
+
+.seal-circle-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 段位标志容器 */
+.seal-rank-wrap {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.seal-rank-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 段位文字（宋体、居中、金属描边 —— 基色由 JS 动态设置） */
+.seal-rank-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  white-space: nowrap;
+  font-weight: bold;
+  /* 字体、大小、阴影在 JS 中针对性设置，这里留个备用 */
+  font-family: "SimSun", "宋体", serif;
+  font-size: 11px;
+}
+
+/* 等级显示 */
+.seal-circle-t1 {
+  font-size: 12px;
+  color: #ccc;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+/* 右侧编辑面板（滑动更快，遮住关闭按钮） */
+.seal-edit-panel {
+  position: absolute;
+  right: -230px;
+  top: 0;
+  width: 230px;
+  height: 100%;
+  background: rgba(30,30,40,0.95);
+  border-left: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  padding: 16px;
+  transition: right 0.08s ease;
+  z-index: 20;                     /* 高于关闭按钮的 z-index:1 */
+  box-sizing: border-box;
+}
+.seal-edit-panel.open { right: 0; }
+.seal-edit-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
-.result-header h2 { margin: 0; }
-
-/* 滑动开关 */
-.toggle-switch {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
+.seal-edit-close {
+  background: none;
+  border: none;
   color: #ccc;
+  font-size: 20px;
+  cursor: pointer;
 }
-.toggle-switch input { display: none; }
-.slider {
-  position: relative;
-  width: 40px;
-  height: 20px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 20px;
-  transition: 0.3s;
-}
-.slider::before {
-  content: "";
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  left: 2px; top: 2px;
-  background: white;
-  border-radius: 50%;
-  transition: 0.3s;
-}
-input:checked + .slider {
-  background: #4a9eff;
-}
-input:checked + .slider::before {
-  transform: translateX(20px);
+.seal-edit-body input {
+  width: 80px;
 }
 
-/* 属性明细行 */
-.attr-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+/* 移动端适配 */
+@media (max-width: 600px) {
+  .seal-small-row { gap: 20px; }
+  .seal-circle-img-wrap { width: 60px; height: 60px; }
+  .seal-circle-large-row .seal-circle-img-wrap { width: 80px; height: 80px; }
+  .seal-rank-wrap { width: 60px; height: 60px; }
 }
-.attr-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.detail-line {
-  font-size: 0.75em;
-  color: #aaa;
-  margin-top: 2px;
-  padding-left: 8px;
-  display: none; /* 默认隐藏，开关控制显示 */
-}
-.detail-line.visible { display: block; }
-/* 颜色类 */
-.detail-raw { color: #ff9999; }
-.detail-badge-add { color: #99ff99; }
-.detail-badge-mult { color: #99ccff; }

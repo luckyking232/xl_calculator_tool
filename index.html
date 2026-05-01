@@ -13,6 +13,8 @@
       <button class="side-btn" data-modal="passive">📘<br>被动</button>
       <button class="side-btn" data-modal="awake">✨<br>觉醒</button>
       <button class="side-btn" data-modal="badge">🎖️<br>徽章</button>
+      <!-- 👇 新增刻印按钮 -->
+      <button class="side-btn" data-modal="seal">🔮<br>刻印</button>
     </nav>
 
     <main id="app">
@@ -107,6 +109,37 @@
       <div id="partsContainer" class="parts-area"></div>
       <div class="modal-buttons">
         <button id="closeBadgeBtn" class="btn-glass">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 👇 新增刻印配置浮窗 -->
+  <div id="modal-seal" class="modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-content seal-modal">
+      <div class="seal-layout">
+        <div class="seal-prof-sidebar" id="sealProfSidebar">
+          <div class="seal-prof-btn active" data-prof="坚甲">
+            <img src="./assets/seal/01坚甲_ExploreDevelop_fui_atlas0.png.png" alt="坚甲">
+          </div>
+          <div class="seal-prof-btn" data-prof="异刃">
+            <img src="./assets/seal/02异刃_ExploreDevelop_fui_atlas0.png.png" alt="异刃">
+          </div>
+          <div class="seal-prof-btn" data-prof="言灵">
+            <img src="./assets/seal/03言灵_ExploreDevelop_fui_atlas0.png.png" alt="言灵">
+          </div>
+          <div class="seal-prof-btn" data-prof="猎影">
+            <img src="./assets/seal/04猎影_ExploreDevelop_fui_atlas0.png.png" alt="猎影">
+          </div>
+        </div>
+        <div class="seal-main" id="sealMain"></div>
+        <div class="seal-edit-panel" id="sealEditPanel">
+          <div class="seal-edit-header">
+            <span class="seal-edit-title" id="sealEditTitle">调整等级</span>
+            <button class="seal-edit-close" id="sealEditClose">×</button>
+          </div>
+          <div class="seal-edit-body" id="sealEditBody"></div>
+        </div>
       </div>
     </div>
   </div>
