@@ -24,12 +24,12 @@ function getPartIconPath(suitId, partType) {
 export function renderBadgeUI(badgeConfig, suitGrid, partsContainer, badgeState, onChange) {
   renderSuitGrid(suitGrid, badgeConfig.suits, badgeState.selectedSuitId, (newId) => {
     badgeState.selectedSuitId = newId;
-    Array.from(suitGrid.children).forEach(card => {
-      const suitId = parseInt(card.dataset.suitId);
-      card.classList.toggle('selected', suitId === newId);
-    });
-    renderPartsPanel(partsContainer, badgeConfig, badgeState, onChange);
-    onChange();
+  Array.from(suitGrid.children).forEach(card => {
+    const suitId = card.dataset.suitId; // 无套装时 suitId 为 ''
+    card.classList.toggle('selected', (newId === null && suitId === '') || suitId == newId);
+  });
+  renderPartsPanel(partsContainer, badgeConfig, badgeState, onChange);
+  onChange();
   });
   renderPartsPanel(partsContainer, badgeConfig, badgeState, onChange);
 }
@@ -37,6 +37,17 @@ export function renderBadgeUI(badgeConfig, suitGrid, partsContainer, badgeState,
 // ==================== 套装网格 ====================
 function renderSuitGrid(container, suits, selectedSuitId, onSelect) {
   container.innerHTML = '';
+  // 无套装卡片
+  const noneCard = document.createElement('div');
+  noneCard.className = 'suit-card' + (selectedSuitId === null ? ' selected' : '');
+  noneCard.dataset.suitId = '';
+  noneCard.style.cssText = 'overflow:auto; padding:8px;';
+  noneCard.innerHTML = `
+    <div style="font-size:16px; font-weight:bold; color:#fff;">🔘 无套装</div>
+    <div style="font-size:12px; color:#aaa;">不应用任何套装效果</div>
+  `;
+  noneCard.addEventListener('click', () => onSelect(null));
+  container.appendChild(noneCard);
   suits.forEach(suit => {
     const card = document.createElement('div');
     card.className = 'suit-card' + (selectedSuitId === suit.id ? ' selected' : '');
@@ -59,10 +70,10 @@ function renderSuitGrid(container, suits, selectedSuitId, onSelect) {
 function renderPartsPanel(container, badgeConfig, state, onChange) {
   container.innerHTML = '';
   const suitId = state.selectedSuitId;
-  if (!suitId) {
-    container.innerHTML = '<p style="color:#aaa;">请先选择套装</p>';
-    return;
-  }
+if (!suitId) {
+  container.innerHTML = ''; // 直接清空，不提示
+  return;
+}
   const flowerPanel = createPartPanel('花', state.flowerMain, badgeConfig.flower_main_options, state.flowerSubs, state.flowerSubTimes, state.flowerLevel,
     (v) => { state.flowerLevel = v; onChange(); }, 'flower', state.lastValidFlowerLv, v => state.lastValidFlowerLv = v, badgeConfig, state, onChange, suitId);
   const orbPanel = createPartPanel('球', state.orbMain, badgeConfig.orb_main_options, state.orbSubs, state.orbSubTimes, state.orbLevel,

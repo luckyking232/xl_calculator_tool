@@ -38,7 +38,7 @@ export function formatAttr(attrId, value) {
  * 核心计算函数
  */
 export function calculate(state, data) {
-  const { char, tier, level, passiveLevels, awakeActive, badgeState } = state;
+  const { char, tier, level, passiveLevels, awakeActive, badgeState, sealAdd } = state;
   const { levelUpData, qualityUpData, skillLevelUpData, badgeConfig } = data;
 
   const preLevels = [0, 30, 70, 130, 220];
@@ -149,18 +149,34 @@ export function calculate(state, data) {
   }
   let finalSpd = rawSpd / (1 + badgeSpdBonus / 10000);
 
+  // 刻印加成（直接加算，无百分比）
+  let sealEffect = {};
+  if (sealAdd) {
+    sealEffect = {
+      "40000103": sealAdd.atk || 0,
+      "40000104": sealAdd.def || 0,
+      "40000102": sealAdd.hp || 0
+    };
+  }
+
   // 最终属性（不含攻速）
   const finalStats = {};
   const detail = {};
-  for (let k in { ...rawStats, ...badgeAdd, ...badgeMult }) {
+  for (let k in { ...rawStats, ...badgeAdd, ...badgeMult, ...sealEffect }) {
     if (k === '40000302' || k === '40000316') continue;
     const raw = rawStats[k] || 0;
-    const add = Math.ceil(badgeAdd[k] || 0);
-    const mult = badgeMult[k] || 0;
-    const multVal = Math.ceil(raw * mult / 10000);
-    const badgeTotal = add + multVal;
-    finalStats[k] = raw + add + multVal;
-    detail[k] = { raw, badgeAdd: add, badgeMultVal: multVal, badgeTotal };
+    const badgeAddVal = Math.ceil(badgeAdd[k] || 0);
+    const badgeMultVal = Math.ceil(raw * (badgeMult[k] || 0) / 10000);
+    const badgeTotal = badgeAddVal + badgeMultVal;
+    const sealVal = Math.ceil(sealEffect[k] || 0);
+    finalStats[k] = raw + badgeTotal + sealVal;
+    detail[k] = {
+      raw,
+      badgeAdd: badgeAddVal,
+      badgeMultVal,
+      badgeTotal,
+      sealAdd: sealVal
+    };
   }
 
   finalStats['40000302'] = finalSpd;

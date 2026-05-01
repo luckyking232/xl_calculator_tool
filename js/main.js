@@ -35,11 +35,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const partsContainer = document.getElementById('partsContainer');
   const closeBadgeBtn = document.getElementById('closeBadgeBtn');
 
-  // 刻印弹窗元素
+  // 刻印相关 DOM
   const modalSeal = document.getElementById('modal-seal');
   const sealMain = document.getElementById('sealMain');
   const sealEditPanel = document.getElementById('sealEditPanel');
-  // const closeSealBtn = document.getElementById('closeSealBtn');
 
   const pickerModal = document.getElementById('pickerModal');
   const charGrid = document.getElementById('charGrid');
@@ -58,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let qualityUpData = {};
   let skillLevelUpData = {};
   let badgeConfig = null;
+  let sealData = null;              // 新增：刻印数据
 
   let currentCharId = null;
   let selectedCharId = null;
@@ -99,39 +99,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // ==================== 核心计算 ====================
-  function runCalculate() {
-    if (!currentCharId || !badgeConfig) return;
-    const ch = characters.find(c => c.id === currentCharId);
-    if (!ch) return;
+// ==================== 核心计算 ====================
+function runCalculate() {
+  if (!currentCharId || !badgeConfig) return;
+  const ch = characters.find(c => c.id === currentCharId);
+  if (!ch) return;
 
-    const tier = parseInt(tierSelect.value);
-    const level = parseInt(levelInput.value) || lastValidLevel;
+  const tier = parseInt(tierSelect.value);
+  const level = parseInt(levelInput.value) || lastValidLevel;
 
-    const passiveLevels = {};
-    document.querySelectorAll('.passive-level').forEach(sel => {
-      const skillId = parseInt(sel.closest('.passive-row').dataset.skillId);
-      const lv = parseInt(sel.value);
-      if (lv > 0) passiveLevels[skillId] = lv;
-    });
+  const passiveLevels = {};
+  document.querySelectorAll('.passive-level').forEach(sel => {
+    const skillId = parseInt(sel.closest('.passive-row').dataset.skillId);
+    const lv = parseInt(sel.value);
+    if (lv > 0) passiveLevels[skillId] = lv;
+  });
 
-    const state = {
-      char: ch,
-      tier,
-      level,
-      passiveLevels,
-      awakeActive,
-      badgeState
-    };
+  // 获取刻印加成（只计算当前角色职业的刻印）
+  const sealAdd = (sealMain && sealMain.getTotalSealAdd)
+    ? sealMain.getTotalSealAdd(ch.profession)
+    : { atk: 0, def: 0, hp: 0 };
 
-    const { finalStats, detail } = calculate(state, {
-      levelUpData, qualityUpData, skillLevelUpData, badgeConfig
-    });
+  const state = {
+    char: ch,
+    tier,
+    level,
+    passiveLevels,
+    awakeActive,
+    badgeState,
+    sealAdd               // 刻印加成
+  };
 
-    lastFinalStats = finalStats;
-    lastDetail = detail;
-    renderResult(attrGrid, finalStats, detail, showSourceToggle.checked, ATTR_ID_MAP);
-  }
+  const { finalStats, detail } = calculate(state, {
+    levelUpData, qualityUpData, skillLevelUpData, badgeConfig
+  });
+
+  lastFinalStats = finalStats;
+  lastDetail = detail;
+  renderResult(attrGrid, finalStats, detail, showSourceToggle.checked, ATTR_ID_MAP);
+}
 
   // ==================== 角色选择 ====================
   function selectCharacter(id) {
@@ -188,15 +194,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         openModal(modalBadge);
       } else if (modalId === 'seal') {
         openModal(modalSeal);
-        if (!sealInited) {
-          initSealUI(sealMain, sealEditPanel, () => {});
-          sealInited = true;
-        }
+        // 延后到数据加载完成后才初始化（见下方启动流程）
       }
     });
   });
 
-  // 关闭按钮与背景点击（包含新增加的刻印关闭按钮）
+  // 关闭按钮与背景点击
   [closeLevelBtn, closePassiveBtn, closeAwakeBtn, closeBadgeBtn].forEach(btn => {
     btn.addEventListener('click', () => closeModal(btn.closest('.modal')));
   });
@@ -253,8 +256,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     qualityUpData = data.qualityUpData;
     skillLevelUpData = data.skillLevelUpData;
     badgeConfig = data.badgeConfig;
+    sealData = data.sealData;                // 保存刻印数据
 
     characters.sort((a, b) => a.id - b.id);
+
+    // 初始化刻印 UI（只需一次，传入数据和计算回调）
+    if (sealData) {
+      initSealUI(sealMain, sealEditPanel, runCalculate, sealData);
+    }
+
     if (characters.length > 0) selectCharacter(characters[0].id);
   } catch (err) {
     alert('数据加载失败，请刷新重试。');

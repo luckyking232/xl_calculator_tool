@@ -57,6 +57,7 @@ export function renderResult(attrGrid, finalStats, detail, showDetail, ATTR_ID_M
     if (showDetail && detail[id]) {
       const d = detail[id];
       if (id === '40000302') {
+        // 攻速属性：仅显示原始值和徽章加成，不显示刻印
         detailHtml = `<span class="detail-raw">${d.raw}</span>`;
         if (d.badgeTotal !== 0) {
           detailHtml += ` <span class="detail-badge-add">${d.badgeTotal >= 0 ? '+' : ''}${d.badgeTotal}</span>`;
@@ -64,9 +65,13 @@ export function renderResult(attrGrid, finalStats, detail, showDetail, ATTR_ID_M
       } else {
         const rawStr = formatAttr(id, d.raw);
         const badgeStr = formatAttr(id, d.badgeTotal);
+        const sealStr = formatAttr(id, d.sealAdd);
         detailHtml = `<span class="detail-raw">${rawStr}</span>`;
         if (d.badgeTotal !== 0) {
           detailHtml += ` <span class="detail-badge-add">${d.badgeTotal >= 0 ? '+' : ''}${badgeStr}</span>`;
+        }
+        if (d.sealAdd !== 0) {
+          detailHtml += ` <span class="detail-seal-add">${d.sealAdd >= 0 ? '+' : ''}${sealStr}</span>`;
         }
       }
     }
@@ -75,7 +80,7 @@ export function renderResult(attrGrid, finalStats, detail, showDetail, ATTR_ID_M
 
     return `<div class="attr-item">
       <div class="attr-row"><span class="attr-name">${name}</span><span>${finalDisplay}</span></div>
-      ${showDetail ? `<div class="detail-line visible">${detailHtml}</div>` : `<div class="detail-line"></div>`}
+      ${showDetail ? `<div class="detail-line visible" style="text-align:right;">${detailHtml}</div>` : `<div class="detail-line"></div>`}
     </div>`;
   }).join('');
 }

@@ -172,6 +172,7 @@ input:checked + .slider::before {
 .detail-line.visible { display: block; }
 .detail-raw { color: #ff9999; }
 .detail-badge-add { color: #99ff99; }
+.detail-seal-add { color: #99ccff; }
 
 /* 模态浮窗通用 */
 .modal {
@@ -201,7 +202,7 @@ input:checked + .slider::before {
 .badge-modal { max-width: 700px; }
 .modal-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 
-/* 徽章 - 套装网格 （保持原有grid布局） */
+/* 徽章 - 套装网格 */
 .badge-section { margin-bottom: 16px; }
 .suit-grid {
   display: grid;
@@ -325,7 +326,6 @@ select option { background: #2a2a3a; color: #e0e0e0; }
 .char-card .card-name { font-size: 11px; color: #ccc; margin-top: 4px; text-align: center; word-break: keep-all; }
 
 /* ==================== 刻印系统样式 ==================== */
-/* ==================== 刻印系统样式 ==================== */
 .seal-modal {
   max-width: 850px;
 }
@@ -337,7 +337,7 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   overflow: hidden;
 }
 
-/* 自动生成的关闭按钮（右上角，会被编辑面板遮住） */
+/* 自动生成的关闭按钮（右上角） */
 .seal-close-btn {
   position: absolute;
   right: 10px;
@@ -392,30 +392,30 @@ select option { background: #2a2a3a; color: #e0e0e0; }
 /* 中间主区域 */
 .seal-main {
   flex: 1;
-  position: relative;
   display: flex;
-  align-items: center;
+  align-items: center;       /* 垂直居中 */
   justify-content: center;
-  transition: opacity 0.15s ease;    /* 职业切换淡入淡出 */
+  gap: 20px;
+  padding: 0 10px;
 }
 
-/* 整体纵向排列容器 */
+/* 刻印内容纵向排列容器 */
 .seal-circles {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;   /* 内部内容垂直居中 */
   gap: 30px;
-  padding: 20px 0;
 }
 
-/* 大圆：强制横向排列，覆盖 .seal-circle 的 column 方向 */
+/* 大圆横向布局 */
 .seal-circle.seal-circle-large-row {
   flex-direction: row;
   align-items: center;
   gap: 20px;
 }
 
-/* 右侧列（段位标志 + 等级） */
+/* 右侧列（段位 + 等级） */
 .seal-right-col {
   display: flex;
   flex-direction: column;
@@ -423,7 +423,7 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   gap: 6px;
 }
 
-/* 小圆行（攻击/生命/防御横向排列） */
+/* 小圆行（攻击/防御/生命横向排列） */
 .seal-small-row {
   display: flex;
   justify-content: center;
@@ -431,17 +431,12 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   gap: 40px;
 }
 
-/* 通用圆样式（基类） */
+/* 通用圆样式 */
 .seal-circle {
   display: flex;
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-}
-
-/* 小圆专用（保留默认纵向排列，无需额外样式） */
-.seal-circle-small {
-  /* 继承 .seal-circle 的 column 布局 */
 }
 
 /* 图标容器 */
@@ -481,7 +476,7 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   object-fit: contain;
 }
 
-/* 段位文字（宋体、居中、金属描边 —— 基色由 JS 动态设置） */
+/* 段位文字（宋体，居中，金属描边基色由JS设置） */
 .seal-rank-text {
   position: absolute;
   top: 50%;
@@ -490,7 +485,6 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   z-index: 2;
   white-space: nowrap;
   font-weight: bold;
-  /* 字体、大小、阴影在 JS 中针对性设置，这里留个备用 */
   font-family: "SimSun", "宋体", serif;
   font-size: 11px;
 }
@@ -503,7 +497,46 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   margin-top: 2px;
 }
 
-/* 右侧编辑面板（滑动更快，遮住关闭按钮） */
+/* 右侧最终总加成面板 */
+.seal-total-panel {
+  width: 130px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  padding: 16px 12px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: center;          /* 居中，不拉伸 */
+  height: auto;                /* 高度由内容决定 */
+}
+
+.seal-total-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.seal-total-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  margin: 6px 0;
+}
+
+.seal-total-item .attr-label {
+  color: #ccc;
+}
+
+.seal-total-item .attr-value {
+  color: #ffd966;
+  font-weight: bold;
+}
+
+/* 右侧编辑面板（滑出更快） */
 .seal-edit-panel {
   position: absolute;
   right: -230px;
@@ -515,7 +548,7 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   backdrop-filter: blur(10px);
   padding: 16px;
   transition: right 0.08s ease;
-  z-index: 20;                     /* 高于关闭按钮的 z-index:1 */
+  z-index: 20;
   box-sizing: border-box;
 }
 .seal-edit-panel.open { right: 0; }
@@ -536,10 +569,46 @@ select option { background: #2a2a3a; color: #e0e0e0; }
   width: 80px;
 }
 
+/* 刻印等级卡片列表 */
+.seal-level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.seal-level-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ccc;
+}
+.seal-level-card.active {
+  border-color: #4a9eff;
+  background: rgba(74,158,255,0.1);
+  color: #ffd966;
+}
+.seal-level-card .level-num { font-weight: bold; }
+.seal-level-card .attr-bonus { font-size: 14px; }
+
+/* 属性来源刻印加成颜色 */
+.detail-seal-add { color: #99ccff; }
+
 /* 移动端适配 */
 @media (max-width: 600px) {
+  .layout { flex-direction: column; }
+  .sidebar { flex-direction: row; width: 100%; height: auto; justify-content: center; position: static; }
+  .side-btn { width: auto; height: auto; padding: 8px 12px; font-size: 14px; }
+  .parts-area { grid-template-columns: 1fr; }
+
   .seal-small-row { gap: 20px; }
   .seal-circle-img-wrap { width: 60px; height: 60px; }
   .seal-circle-large-row .seal-circle-img-wrap { width: 80px; height: 80px; }
   .seal-rank-wrap { width: 60px; height: 60px; }
+  .seal-total-panel { width: 90px; padding: 6px; }
 }
